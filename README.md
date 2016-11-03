@@ -1,7 +1,7 @@
 # The ASV System Package
 
 The Autonomous Surface Vehicle (ASV) System Package is a collection of ROS
-packages developed by Thomas Stenerdrn as a part of his master's thesis.
+packages developed by Thomas Stenersen as a part of his master's thesis.
 I am using the simulator and adding a simulation based mpc controller.
 
 
