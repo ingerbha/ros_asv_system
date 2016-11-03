@@ -1,13 +1,16 @@
 # The ASV System Package
 
 The Autonomous Surface Vehicle (ASV) System Package is a collection of ROS
-packages I developed as a part of my master's thesis.
+packages developed by Thomas Stenerdrn as a part of his master's thesis.
+I am using the simulator and adding a simulation based mpc controller.
 
 
 ## Contents
 This package contains:
 + `asv_ctrl_vo`: an implementation of the "Velocity Obstacle" algorithm for
 collision avoidance.
++ `asv_sb_mpc` : an implementation of a simulation based model predictive control
+algorithm for collision avoidance.
 + `asv_path_trackers`: implements the (Integral) Line of Sight (LOS) method and
 a simple pure pursuit scheme for path following.
 + `asv_msgs`: message types used in the system.
