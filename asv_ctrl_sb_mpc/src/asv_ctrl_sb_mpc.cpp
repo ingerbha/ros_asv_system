@@ -101,7 +101,7 @@ void simulationBasedMpc::updateAsvState(const nav_msgs::Odometry::ConstPtr &msg,
   psi_d_ = psi_d;
 };
 
-void simulationBasedMpc::getBestControlInput(double &u_best, double &psi_best)
+void simulationBasedMpc::getBestControlOffset(double &u_d_best, double &psi_d_best)
 {
 	
 	std::vector<asv_msgs::State>::iterator it; // Obstacles iterator
@@ -153,9 +153,8 @@ void simulationBasedMpc::getBestControlInput(double &u_best, double &psi_best)
 	P_ca_last_ = u_os;
 	Chi_ca_last_ = psi_os;
 
-	// TODO: change something so that the first two offsets are correct
-	u_best = u_d_*u_os;
-	psi_best = psi_d_+ psi_os; 
+	u_d_best = u_os;
+	psi_d_best = psi_os;
 	
 	ROS_INFO("u_os: %0.2f      psi_os: %0.2f", u_os, psi_os*RAD2DEG);
 };

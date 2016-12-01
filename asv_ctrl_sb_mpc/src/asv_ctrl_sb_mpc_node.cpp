@@ -80,13 +80,22 @@ void simulationBasedMpcNode::initialize(ros::Publisher *cmd_pub,
 
 void simulationBasedMpcNode::start()
 {
-	ros::Rate loop_rate(10.0);
+	double rate = 10.0;
+	ros::Rate loop_rate(rate);
 	
 	clock_t tick, tock;
+	double t = 0;
 	while (ros::ok())
 	{
-		sb_mpc_->getBestControlInput(cmd_vel_.linear.x, cmd_vel_.angular.y);
-		
+		// Run MPC every 5 seconds
+		if (t > 5){
+			sb_mpc_->getBestControlOffset(u_os_, psi_os_);
+			t = 0;
+		}
+		t += 1/rate;
+
+		cmd_vel_.linear.x = u_d_*u_os_;
+		cmd_vel_.angular.y = psi_d_ + psi_os_;
 		cmd_pub_->publish(cmd_vel_);
 		
 		ros::spinOnce();

@@ -47,7 +47,7 @@ class simulationBasedMpc
 		* @param u_best The reference parameter to store the "best" surge speed.
 		* @param psi_best The reference parameter to store the "best" heading.
 		*/
-		void getBestControlInput(double &u_best, double &psi_best);		
+		void getBestControlOffset(double &u_d_best, double &psi_d_best);
 		
 		
 		private:

@@ -56,6 +56,8 @@ class simulationBasedMpcNode
 	
 	double u_d_;
 	double psi_d_;
+	double u_os_;
+	double psi_os_;
 	
 	// ROS API
 	ros::Publisher *cmd_pub_;
