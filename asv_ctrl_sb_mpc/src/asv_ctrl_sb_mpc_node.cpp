@@ -1,5 +1,6 @@
 #include "ros/ros.h"
 #include <ros/console.h>
+
 #include <vector>
 #include <ctime>
 
@@ -79,12 +80,11 @@ void simulationBasedMpcNode::initialize(ros::Publisher *cmd_pub,
 
 void simulationBasedMpcNode::start()
 {
-	ros::Rate loop_rate(0.25);
+	ros::Rate loop_rate(10.0);
 	
 	clock_t tick, tock;
 	while (ros::ok())
 	{
-		sb_mpc_->update();
 		sb_mpc_->getBestControlInput(cmd_vel_.linear.x, cmd_vel_.angular.y);
 		
 		cmd_pub_->publish(cmd_vel_);

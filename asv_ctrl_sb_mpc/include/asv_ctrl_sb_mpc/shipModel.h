@@ -9,29 +9,38 @@ class shipModel
 	public:
 	
 	/// Constructor
-	shipModel();
+	shipModel(double T, double dt);
 	
 	/// Destructor
 	~shipModel();
 	
 	void eulersMethod(Eigen::Vector3d asv_pose, Eigen::Vector3d asv_twist, double u_d, double psi_d);
-	
-	std::vector<double> getXVect();
-	
-	std::vector<double> getYVect();
-	
-	std::vector<double> getUVect();
-	
-	std::vector<double> getVVect();
-	
-	std::vector<double> getPsiVect();
-	
+
+	std::vector<double> x;
+	std::vector<double> y;
+	std::vector<double> psi;
+	std::vector<double> u;
+	std::vector<double> v;
+	std::vector<double> r;
+
 	private:
 	
+	void clearVects();
+
+	void updateCtrlInput(double u_d, double psi_d);
+
+	Eigen::Vector3d eta;
+	Eigen::Vector3d nu;
+	Eigen::Vector3d tau;
+
+	Eigen::Matrix3d Minv;
+	Eigen::Vector3d Cvv;
+	Eigen::Vector3d Dvv;
+
 	// Model Parameters
 	double radius; 	// [m] 
-	double mass; 	// [kg]
-	double inertia; // [kg/m2]
+	double M; 	// [kg]
+	double I_z; // [kg/m2]
 
 	// Added mass terms
 	double X_udot;
@@ -65,19 +74,13 @@ class shipModel
 	double rudder_d;
 
 	// Simulation parameters
-	const double DT;
-	const double T;
-	double Cx;
-	double Cy;
-	
-	std::vector<double> x;
-	std::vector<double> y;
-	std::vector<double> u;
-	std::vector<double> v;
-	std::vector<double> r;
-	std::vector<double> psi;
-	std::vector<double> nc;
-	std::vector<double> dc;
+	double DT_;
+	double T_;
+	int n_samp;
+	double Kp_u;
+	double Kp_psi;
+	double Kd_psi;
+	double Kp_r;
 	
 };
 

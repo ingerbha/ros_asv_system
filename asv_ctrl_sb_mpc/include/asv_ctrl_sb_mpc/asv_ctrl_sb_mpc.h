@@ -7,10 +7,13 @@
 #include "nav_msgs/OccupancyGrid.h"
 #include "nav_msgs/Odometry.h"
 #include "visualization_msgs/Marker.h"
-
+#include "asv_ctrl_sb_mpc/obstacle.h"
+#include "asv_ctrl_sb_mpc/shipModel.h"
 
 class simulationBasedMpc
 {
+
+	
 	public:
 		/// Constructor
 		simulationBasedMpc();
@@ -25,11 +28,6 @@ class simulationBasedMpc
 		* @param map A pointer to the occupancy grid published by the map_server.
 		*/
 		void initialize(std::vector<asv_msgs::State> *obstacles, nav_msgs::OccupancyGrid *map);
-		
-		/**
-		* @brief Updates the ?????.
-		*/
-		void update();
 		
 		/**
 		* @brief Callback for updating the internal ASV state (data provided by ROS wrapper).
@@ -52,26 +50,51 @@ class simulationBasedMpc
 		void getBestControlInput(double &u_best, double &psi_best);		
 		
 		
-		
 		private:
-		
-		double costFunc();
-		
+				
 		Eigen::Vector3d asv_pose_;
 		Eigen::Vector3d asv_twist_;
 		double u_d_;
 		double psi_d_;
-		
+				
+		std::vector<asv_msgs::State> *obstacles_;
+		nav_msgs::OccupancyGrid *map_;
+		nav_msgs::OccupancyGrid local_map_;
+		ros::Publisher lm_pub;
+
 		double Chi_ca_last_;
 		double P_ca_last_;
 		
 		std::vector<double> Chi_ca_;
 		std::vector<double> P_ca_;
 		
-		std::vector<asv_msgs::State> *obstacles_;
-		nav_msgs::OccupancyGrid *map_;
-		nav_msgs::OccupancyGrid local_map_;
-		ros::Publisher lm_pub;
+		std::vector<obstacle*> obstacles_vect;
+
+		shipModel *asv;
+		double costFnc(double P_ca, double Chi_ca, int k);
+		double Delta_P(double P_ca);
+		double Delta_Chi(double Chi_ca);
+		double cost;
+			
+		// Cost function weights;
+		const double P_;
+		const double Q_;
+		const double D_CLOSE_;
+		const double D_SAFE_;
+		const double K_COLL_;
+		const double PHI_AH_;
+		const double PHI_OT_;
+		const double PHI_HO_;
+		const double PHI_CR_;
+		const double KAPPA_;
+		const double K_P_;
+		const double K_CHI_;
+		
+		const double T_; 	// Prediction horizon
+		const double DT_;	// Step length, obstacle trajectory prediction 		
+		
+		int n_samp;
+
 			
 };
 

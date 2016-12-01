@@ -1,15 +1,36 @@
+#include <ros/console.h>
+
 #include "asv_ctrl_sb_mpc/shipModel.h"
 
-// Remember to include in CMake file
+//Debug
+#include <typeinfo>
+#include <cmath>
 
-shipModel::shipModel(): DT(0.1),
-						T(100) // 
+const float PI = 3.1415927;
+static const double DEG2RAD = PI/180.0f;
+static const double RAD2DEG = 180.0f/PI;
+
+/// Assures that the numerical difference is at most PI
+double normalize_angle_diff(double angle, double angle_ref);
+
+/// Assures that angle is between [-PI, PI)
+double normalize_angle(double angle);
+
+shipModel::shipModel(double T, double dt)
 {	
-	radius = 10.0; // [m] (In reality 4.15 m)
-	mass = 3980.0; // [kg]
-	inertia = 19703.0; // [kg/m2]
+	T_ = T;
+	DT_ = dt;
+	n_samp = floor(T_/DT_);
 
-	// Added mass terms
+	eta = Eigen::Vector3d::Zero();
+	nu  = Eigen::Vector3d::Zero();
+	tau = Eigen::Vector3d::Zero();
+
+	radius = 10.0; // [m] (In reality 4.15 m)
+	M = 3980.0; // [kg]
+	I_z = 19703.0; // [kg/m2]
+
+	// Added M terms
 	X_udot = 0.0;
 	Y_vdot = 0.0;
 	Y_rdot = 0.0;
@@ -21,7 +42,7 @@ shipModel::shipModel(): DT(0.1),
 	Y_v = -200.0;
 	Y_r = 0.0;
 	N_v = 0.0;
-	N_r = -3224.0;
+	N_r = -1281;//-3224.0;
 
 	// Nonlinear damping terms [X_|u|u, Y_|v|v, N_|r|r, X_uuu, Y_vvv, N_rrr]
 	X_uu = -135.0;
@@ -31,6 +52,12 @@ shipModel::shipModel(): DT(0.1),
 	Y_vvv = 0.0;
 	N_rrr = -3224.0;
 
+	Eigen::Matrix3d Mtot;
+	Mtot << M - X_udot, 0, 0,
+	        0, M-Y_vdot, -Y_rdot,
+	        0, -Y_rdot, I_z-N_rdot;
+	Minv = Mtot.inverse();
+
 	//Force limits
 	Fx_min = -6550.0;
 	Fx_max = 13100.0;
@@ -39,94 +66,148 @@ shipModel::shipModel(): DT(0.1),
 
 	// Other
 	rudder_d = 4.0; // distance from rudder to CG
-	rudder_d = 4.0; // distance from rudder to CG
+	Kp_u = 1.0;
+	Kp_psi = 5.0;
+	Kd_psi = 1.0;
+	Kp_r = 8.0;
 
-	// Simulation parameters
-	Cx = 39.1;
-	Cy = 570;
-};
+}
 
-std::vector<double> shipModel::getXVect()
-{
-	return x;
-};
-
-std::vector<double> shipModel::getYVect()
-{
-	return y;
-};
-
-std::vector<double> shipModel::getUVect()
-{
-	return psi;
-};
-
-std::vector<double> shipModel::getVVect()
-{
-	return v;
-};
-
-std::vector<double> shipModel::getPsiVect()
-{
-	return psi;
-};
+shipModel::~shipModel(){
+}
 
 
 void shipModel::eulersMethod(Eigen::Vector3d asv_pose, Eigen::Vector3d asv_twist, double u_d, double psi_d)
 {
-	x.push_back(asv_pose[1]);
-	y.push_back(asv_pose[2]);
-	psi.push_back(asv_pose[3]);
-	u.push_back(asv_twist[1]);
-	v.push_back(asv_twist[2]);
-	r.push_back(asv_twist[3]);
-	nc.push_back(0); // TODO: change init cond 
-	dc.push_back(0); // TODO: change init cond 
-	
 
-	// TODO: Sort this out
+	this->clearVects();
+
+	x.push_back(asv_pose[0]);
+	y.push_back(asv_pose[1]);
+	psi.push_back(normalize_angle(asv_pose[2]));
+	u.push_back(asv_twist[0]);
+	v.push_back(asv_twist[1]);
+	r.push_back(asv_twist[2]);
+	
 	double t = 0;
-	int n = T/DT;
 	double mX, mY, IN, Fx, Fy;
 	double x_dot, y_dot, psi_dot, u_dot, v_dot, r_dot, nc_dot, dc_dot;
-	for (int i = 0; i < n; i++){
-		t += DT;
+	Eigen::Matrix3d rot_z;
+
+	for (int i = 0; i < n_samp-1; i++){
+
+		eta[0] = x[i];
+		eta[1] = y[i];
+		eta[2] =psi[i];
+		nu[0] = u[i];
+		nu[1] = v[i];
+		nu[2] = r[i];
+
+		t += DT_;
 		
-		Fx = Cx*nc[i];
-		Fy = Cy*abs(dc[i])*dc[i];
-		
-		if (Fx > Fx_max){
-			Fx = Fx_max;
-		}else if (Fx < Fx_min){
-			Fx = Fx_min;
-		}
-		if (Fy > Fy_max){
-			Fy = Fy_max;
-		}else if (Fy < Fy_min){
-			Fy = Fy_min;
-		}
-		
-		mX = mass*v[i]*r[i] + X_u*u[i] + X_uu*abs(u[i])*u[i] + Fx;
-		mY = -mass*u[i]*r[i] + Y_v*v[i] + Y_r*r[i] + Y_vv*abs(v[i])*v[i] + Fy;
-		IN = N_v*v[i] + N_r*r[i] + N_rr*abs(r[i])*r[i] + N_rrr*pow(r[i],3) + rudder_d*Fy;
-		
-		x_dot = cos(psi[i])*u[i] - sin(psi[i])*v[i];
-		y_dot = sin(psi[i])*u[i] + cos(psi[i])*v[i];
-		psi_dot = r[i];
-		u_dot = mX/mass;
-		v_dot = mY/mass;
-		r_dot = IN/inertia;
-		nc_dot = -mX/mass + u_d - u[i];
-		dc_dot = -0.6*r[i] + 0.001*(psi_d - psi[i]); //TODO: save constants elsewhere
-		
-		x.push_back(x[i]+ DT*x_dot);
-		y.push_back(y[i]+ DT*y_dot);
-		psi.push_back(psi[i]+ DT*psi_dot);
-		u.push_back(u[i]+ DT*u_dot);
-		v.push_back(v[i]+ DT*v_dot);
-		r.push_back(r[i]+ DT*r_dot);
-		nc.push_back(nc[i]+ DT*nc_dot);
-		dc.push_back(dc[i]+ DT*dc_dot);
-		
+		psi_d = normalize_angle_diff(psi_d, psi[i]);
+
+		//rot_z = Eigen::AngleAxisd(eta[2], Eigen::Vector3d::UnitZ());
+
+		rot_z << cos(eta[2]), -sin(eta[2]), 0,
+				 sin(eta[2]), sin(eta[2]), 0,
+				 0,0,1;
+
+		// Calculate coriolis and dampening matrices according to Fossen, 2011 or Stenersen, 2014.
+		Cvv[0] = (-M*nu[1] + Y_vdot*nu[1] + Y_rdot*nu[2]) * nu[2];
+		Cvv[1] = ( M*nu[0] - X_udot*nu[0]) * nu[2];
+		Cvv[2] = (( M*nu[1] - Y_vdot*nu[1] - Y_rdot*nu[2] ) * nu[0] +
+		            ( -M*nu[0] + X_udot*nu[0] ) * nu[1]);
+
+		Dvv[0] = - (X_u + X_uu*fabs(nu[0]) + X_uuu*nu[0]*nu[0]) * nu[0];
+		Dvv[1] = - ((Y_v*nu[1] + Y_r*nu[2]) +
+		              (Y_vv*fabs(nu[1])*nu[1] + Y_vvv*nu[1]*nu[1]*nu[1]));
+		Dvv[2] = - ((N_v*nu[1] + N_r*nu[2]) +
+		              (N_rr*fabs(nu[2])*nu[2] + N_rrr*nu[2]*nu[2]*nu[2]));
+
+		this->updateCtrlInput(u_d, psi_d);
+
+		// Integrate system
+		eta += DT_ * (rot_z * nu);
+		nu  += DT_ * (Minv * (tau- Cvv - Dvv));
+
+		// Keep yaw within [-PI,PI)
+		eta[2] = normalize_angle(eta[2]);
+
+		x.push_back(eta[0]);
+		y.push_back(eta[1]);
+		psi.push_back(eta[2]);
+		u.push_back(nu[0]);
+		v.push_back(nu[1]);
+		r.push_back(nu[2]);
+
 	} 
-};
+
+}
+
+void shipModel::updateCtrlInput(double u_d, double psi_d){
+	double Fx = Cvv[0] + Dvv[0] + Kp_u*M*(u_d - nu[0]);
+	double Fy = 0.0;
+
+    Fy = (Kp_psi * I_z ) * ((psi_d - eta[2]) - Kd_psi*nu[2]);
+    Fy *= 1.0 / rudder_d;
+
+	// Saturate
+	if (Fx < Fx_min)
+	  Fx = Fx_min;
+	if (Fx > Fx_max)
+	  Fx = Fx_max;
+
+	if (Fy < Fy_min)
+	  Fy = Fy_min;
+	if (Fy > Fy_max)
+	  Fy = Fy_max;
+
+	tau[0] = Fx;
+	tau[1] = Fy;
+	tau[2] = rudder_d * Fy;
+}
+
+void shipModel::clearVects(){
+	x.clear();
+	y.clear();
+	psi.clear();
+	u.clear();
+	v.clear();
+	r.clear();
+}
+
+
+double normalize_angle(double angle){
+
+	if( isinf(angle)) return angle;
+
+	while(angle <= -PI) angle += 2*PI;
+
+	while (angle > PI) angle -= 2*PI;
+
+	return angle;
+}
+
+double normalize_angle_diff(double angle, double angle_ref){
+	double new_angle;
+	double diff = angle_ref - angle;
+
+	if (isinf(angle) || isinf(angle_ref)) return angle;
+
+	// Get angle within 2*PI of angle_ref
+	if (diff > 0){
+		new_angle = angle +(diff - fmod(diff, 2*PI));
+	}else{
+		new_angle = angle + (diff + fmod(-diff, 2*PI));
+	}
+
+	// Get angle on side closest to angle_ref
+	diff = angle_ref - new_angle;
+	if (diff > PI){
+		new_angle += 2*PI;
+	}else if (diff < -PI){
+		new_angle -= 2*PI;
+	}
+	return new_angle;
+}

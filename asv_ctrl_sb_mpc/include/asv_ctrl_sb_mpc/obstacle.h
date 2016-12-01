@@ -2,37 +2,36 @@
 #define OBSTACLE
 
 #include  <vector>
-#include "asv_msgs/State.h"
+#include <Eigen/Dense>
 
 class obstacle
 {
 	public:
 	
 	/// Constructor
-	obstacle(double x, double y, double u,double v, double T, double dt);
+	obstacle(double x_0, double y_0, double u_0, double v_0,  double psi_0, double T, double dt);
 	
 	/// Destructor
 	~obstacle();
-	
-	std::vector<double> getPredX();
-	std::vector<double> getPredY();
-	std::vector<double> getPredU();
-	std::vector<double> getPredV();
-	double getSize();
+
+	std::vector<double> x;
+	std::vector<double> y;
+	std::vector<double> u;
+	std::vector<double> v;
+	double psi;
 	
 	private:
 	
 	void calculateTrajectory();
+	void clearVects();
 	
-	asv_msgs::State state;
-	
+	int n_samp;
 	double T;
 	double dt;
 	double size;
-	std::vector<double> x_vect;
-	std::vector<double> y_vect;
-	std::vector<double> u_vect;
-	std::vector<double> v_vect;
+
+	//Rotation
+	double r11, r12, r21, r22;
 
 };
 
