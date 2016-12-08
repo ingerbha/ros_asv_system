@@ -9,29 +9,29 @@ class obstacle
 	public:
 	
 	/// Constructor
-	obstacle(double x_0, double y_0, double u_0, double v_0,  double psi_0, double T, double dt);
+	obstacle(double x_0, double y_0, double u_0, double v_0,  double psi_0, double radius, double T, double dt);
 	
 	/// Destructor
 	~obstacle();
 
-	std::vector<double> x;
-	std::vector<double> y;
-	std::vector<double> u;
-	std::vector<double> v;
-	double psi;
+	std::vector<double> x_;
+	std::vector<double> y_;
+	std::vector<double> u_;
+	std::vector<double> v_;
+	double psi_;
+	double radius_;
 	
 	private:
 	
 	void calculateTrajectory();
 	void clearVects();
 	
-	int n_samp;
-	double T;
-	double dt;
-	double size;
+	int n_samp_;
+	double T_;
+	double dt_;
 
-	//Rotation
-	double r11, r12, r21, r22;
+	//Elements of the rotation matrix
+	double r11_, r12_, r21_, r22_;
 
 };
 

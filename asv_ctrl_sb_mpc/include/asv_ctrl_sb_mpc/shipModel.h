@@ -23,6 +23,8 @@ class shipModel
 	std::vector<double> v;
 	std::vector<double> r;
 
+	double radius; 	// [m]
+
 	private:
 	
 	void clearVects();
@@ -38,7 +40,6 @@ class shipModel
 	Eigen::Vector3d Dvv;
 
 	// Model Parameters
-	double radius; 	// [m] 
 	double M; 	// [kg]
 	double I_z; // [kg/m2]
 

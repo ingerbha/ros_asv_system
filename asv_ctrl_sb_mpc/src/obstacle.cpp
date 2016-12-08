@@ -6,25 +6,26 @@
 
 	
 
-obstacle::obstacle(double x_0, double y_0, double u_0, double v_0,  double psi_0, double T_, double dt_)
+obstacle::obstacle(double x_0, double y_0, double u_0, double v_0,  double psi_0, double radius, double T, double dt)
 {
-	T = T_;
-	dt = dt_;
-	n_samp = T/dt;
+	T_ = T;
+	dt_ = dt;
+	n_samp_ = T_/dt_;
 	
 	this->clearVects();
-	x.push_back(x_0);
-	y.push_back(y_0);
-	u.push_back(u_0);
-	v.push_back(v_0);
+	x_.push_back(x_0);
+	y_.push_back(y_0);
+	u_.push_back(u_0);
+	v_.push_back(v_0);
 	//u.push_back(cos(psi_0)*u_0-sin(psi_0)*v_0);
 	//v.push_back(sin(psi_0)*u_0+sin(psi_0)*v_0);
-	psi = psi_0;
+	psi_ = psi_0;
+	radius_ = radius;
 	
-	r11 = cos(psi);
-	r12 = -sin(psi);
-	r21 = sin(psi);
-	r22 = cos(psi);
+	r11_ = cos(psi_);
+	r12_ = -sin(psi_);
+	r21_ = sin(psi_);
+	r22_ = cos(psi_);
 
 	calculateTrajectory();
 };
@@ -35,21 +36,21 @@ obstacle::~obstacle()
 
 void obstacle::calculateTrajectory()
 {
-	for (int i = 0; i < n_samp-1;  i++)
+	for (int i = 0; i < n_samp_-1;  i++)
 	{
-		x.push_back(x[i] + (r11*u[i] + r12*v[i])*dt);
-		y.push_back(y[i] + (r21*u[i] + r22*v[i])*dt);
-		u.push_back(u[i]);
-		v.push_back(v[i]);
+		x_.push_back(x_[i] + (r11_*u_[i] + r12_*v_[i])*dt_);
+		y_.push_back(y_[i] + (r21_*u_[i] + r22_*v_[i])*dt_);
+		u_.push_back(u_[i]);
+		v_.push_back(v_[i]);
 	}
 
 };
 
 void obstacle::clearVects(){
-	x.clear();
-	y.clear();
-	u.clear();
-	v.clear();
+	x_.clear();
+	y_.clear();
+	u_.clear();
+	v_.clear();
 }
 
 

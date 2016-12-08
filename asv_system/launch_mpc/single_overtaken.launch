@@ -1,28 +1,24 @@
 ﻿<launch>
   <include file="$(find asv_simulator)/launch/default.launch">
-    <arg name="waypoint_file" value="$(find asv_simulator)/config/waypoints/south_to_north.yaml" />
-    <arg name="u_d" value="4.0" />
+    <arg name="waypoint_file" value="$(find asv_simulator)/config/mpc_waypoints/ship1_overtaking_mpc.yaml" />
+    <arg name="initial_state" value="[-100.0, 150.0, 0.0, 2.0, 0.,0.]" />
+    <arg name="u_d" value="1.0" />
   </include>
 
-  <include file="$(find asv_system)/launch/mapserver.launch">
-    <arg name="mapfile" value="$(find asv_system)/config/maps/big_block.yaml" />
-  </include>
-  
   <!-- Obstacle ship -->
   <include file="$(find asv_simulator)/launch/default.launch">
-    <arg name="waypoint_file" value="$(find asv_simulator)/config/waypoints/north_to_south.yaml" />
+    <arg name="waypoint_file" value="$(find asv_simulator)/config/mpc_waypoints/asv_overtaking_mpc.yaml" />
     <arg name="use_vo" value="False" />
     <arg name="use_sb_mpc" value="False" />
     <arg name="vessel_model_file" value="$(find asv_simulator)/config/models/ship1.urdf" />
     <arg name="namespace" value="obstacles/ship1" />
     <arg name="shipname" value="ship1" />
-    <arg name="initial_state" value="[0.0, 300.0, -1.57, 1.,0.,0.]" />
+    <arg name="initial_state" value="[-150.0, 150.0, 0, 3.,0.,0.]" />
+    <arg name="u_d" value="3.0" />
   </include>
 
-  <!-- <param name="wave_filter_gain" value="30." /> -->
   <include file="$(find asv_obstacle_tracker)/launch/default.launch"/>
 
-  
   <node pkg="rviz"
         type="rviz"
         name="rviz"
@@ -31,6 +27,7 @@
   <!-- <node pkg="rosbag" -->
   <!--       type="record" -->
   <!--       name="rosbag_record" -->
-  <!--       args="-O /home/thomas/Dropbox/NTNU/master/code/python/bagfiles/head_on_with_no_clearance_waves2.bag /asv/state /obstacles/ship1/state /obstacles/ship2/state /obstacle_states" -->
+  <!--       args="-O /home/ingerbha/mnt/ingerbha/Master/ros_records/bagfiles/single_overtaking.bag /asv/state /obstacles/ship1/state" -->
   <!--       /> -->
 </launch>
+

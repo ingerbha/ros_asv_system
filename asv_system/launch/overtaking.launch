@@ -1,4 +1,4 @@
-<launch>
+﻿<launch>
   <include file="$(find asv_simulator)/launch/default.launch">
     <arg name="waypoint_file" value="$(find asv_simulator)/config/waypoints/asv_overtaking.yaml" />
     <arg name="initial_state" value="[-150.0, 150.0, 0.0, 3.0, 0.,0.]" />
@@ -9,6 +9,7 @@
   <include file="$(find asv_simulator)/launch/default.launch">
     <arg name="waypoint_file" value="$(find asv_simulator)/config/waypoints/ship1_overtaking.yaml" />
     <arg name="use_vo" value="False" />
+    <arg name="use_sb_mpc" value="False" />
     <arg name="vessel_model_file" value="$(find asv_simulator)/config/models/ship1.urdf" />
     <arg name="namespace" value="obstacles/ship1" />
     <arg name="shipname" value="ship1" />

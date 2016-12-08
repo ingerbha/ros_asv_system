@@ -54,6 +54,7 @@ class simulationBasedMpcNode
 	Eigen::Vector3d asv_pose_;
 	Eigen::Vector3d asv_twist_;
 	
+
 	double u_d_;
 	double psi_d_;
 	double u_os_;
