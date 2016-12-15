@@ -246,7 +246,7 @@ void VelocityObstacle::updateVelocityGrid()
 
     for (int u_it=0; u_it<VEL_SAMPLES_; ++u_it) {
       for (int t_it=0; t_it<ANG_SAMPLES_; ++t_it) {
-        // /// @todo
+
         u = u0 + u_it*du;
         t = theta0 + t_it*dtheta;
         normalize_angle_diff(t, va_ref[1]);

@@ -1,4 +1,4 @@
-<launch>
+﻿<launch>
   <include file="$(find asv_simulator)/launch/default.launch">
     <arg name="waypoint_file" value="$(find asv_simulator)/config/waypoints/south_to_north.yaml" />
     <arg name="u_d" value="5.0" />

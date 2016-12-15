@@ -1,4 +1,4 @@
-<launch>
+﻿<launch>
   <include file="$(find asv_simulator)/launch/default.launch">
     <arg name="waypoint_file" value="$(find asv_simulator)/config/waypoints/south_to_north.yaml" />
   </include>
@@ -24,6 +24,6 @@
   <node pkg="rosbag"
         type="record"
         name="rosbag_record"
-        args="-O /home/thomas/Dropbox/NTNU/master/code/python/bagfiles/head_on.bag /asv/state /obstacles/ship1/state /obstacle_states"
+        args="-O /home/ingerbha/ros_records/bagfiles/head_on.bag /asv/state /obstacles/ship1/state /obstacle_states"
         />
 </launch>

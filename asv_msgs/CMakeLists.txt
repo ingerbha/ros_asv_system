@@ -50,6 +50,7 @@ add_message_files(
   ShipMetaData.msg
   State.msg
   StateArray.msg
+  Offset.msg
 )
 
 ## Generate services in the 'srv' folder
