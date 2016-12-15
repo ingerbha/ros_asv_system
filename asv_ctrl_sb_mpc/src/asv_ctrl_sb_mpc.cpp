@@ -24,20 +24,20 @@ static const double RAD2DEG = 180.0f/PI;
 // Utils
 void rot2d(double yaw, Eigen::Vector2d &res);
 
-simulationBasedMpc::simulationBasedMpc() : 	T_(30), //30
-											DT_(0.05),
-											P_(1),
-											Q_(4.0),
-											D_CLOSE_(120.0), //120
-											D_SAFE_(40.0), //40
-											K_COLL_(0.2),
+simulationBasedMpc::simulationBasedMpc() : 	T_(40), 				// 40
+											DT_(0.05), 				// 0.05
+											P_(1), 					// 1
+											Q_(4.0), 				// 4.0
+											D_CLOSE_(100.0),
+											D_SAFE_(20.0),
+											K_COLL_(0.1),
 											PHI_AH_(30.0),
 											PHI_OT_(68.5),
 											PHI_HO_(22.5),
-											PHI_CR_(30), //30
-											KAPPA_(200), //200
-											K_P_(70), //70
-											K_CHI_(120) //120
+											PHI_CR_(30),
+											KAPPA_(10.0),
+											K_P_(0.8),
+											K_CHI_(1.2)
 {
 	n_samp = floor(T_/DT_);
 	asv_pose_ = Eigen::Vector3d(0.0, 0.0, 0.0);
@@ -104,7 +104,11 @@ void simulationBasedMpc::updateAsvState(const nav_msgs::Odometry::ConstPtr &msg,
 
 void simulationBasedMpc::getBestControlOffset(double &u_d_best, double &psi_d_best)
 {
-	
+	double u_os = 1;
+	double psi_os = 0;
+	double cost = INFINITY;
+	double cost_i = 0;
+	double cost_k;
 	std::vector<asv_msgs::State>::iterator it; // Obstacles iterator
 	
 	for (it = obstacles_->begin(); it != obstacles_->end(); ++it){
@@ -112,38 +116,33 @@ void simulationBasedMpc::getBestControlOffset(double &u_d_best, double &psi_d_be
 		obstacles_vect.push_back(obst);
 	}
 	
-	//DEBUG
-//	obstacle *obst = new obstacle(0.0,200.0,2.1,0.0, -1.5708, T_, DT_);
-//	obstacles_vect.push_back(obst);
-
-
-	double u_os = 1;
-	double psi_os = 0;
-	double cost = INFINITY; 
-	double cost_i;
-
-//	ROS_DEBUG_STREAM_NAMED("Testing","Asv yaw: " << asv_pose_[2]*RAD2DEG << "\tObst yaw: " << obstacles_vect[0]->psi_*RAD2DEG);
+	if (obstacles_vect.size() == 0){
+		u_d_best = 1;
+		psi_d_best = 0;
+		P_ca_last_ = 1;
+		Chi_ca_last_ = 0;
+		return;
+	}
 
 	for (int i = 0; i < Chi_ca_.size(); i++){
 		for (int j = 0; j < P_ca_.size(); j++){
 
 			asv->eulersMethod(asv_pose_, asv_twist_, u_d_*P_ca_[j], psi_d_+ Chi_ca_[i]);
 
+			cost_i = -1;
 			for (int k = 0; k < obstacles_vect.size(); k++){
 
-				cost_i = costFnc(P_ca_[j], Chi_ca_[i], k);
+				cost_k = costFnc(P_ca_[j], Chi_ca_[i], k);
 				
-				if (cost_i < cost){
-					cost = cost_i;
-					u_os = P_ca_[j];
-					psi_os = Chi_ca_[i];
+				if (cost_k > cost_i){
+					cost_i = cost_k; 	// Maximizing cost associated with this scenario
 				}
 			}
 
-			if (obstacles_vect.size() == 0){
-				u_os = 1;
-				psi_os = 0;
-				cost = 0;
+			if (cost_i < cost){
+				cost = cost_i; 		// Minimizing the overall cost
+				u_os = P_ca_[j];
+				psi_os = Chi_ca_[i];
 			}
 		}
 	}
@@ -177,13 +176,6 @@ double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 	double H2 = 0;
 	double cost = 0;
 	bool mu, OT, SB, HO, CR;
-	
-
-
-	//DEBUG:
-	bool mu_1 = false;
-	bool mu_2 = false;
-	bool mu_3 = false;
 
 	Eigen::Vector2d v_o;
 	Eigen::Vector2d v_s;
@@ -221,7 +213,9 @@ double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 				k_coll = K_COLL_*combined_radius;
 				C = k_coll*pow((v_s-v_o).norm(),2);
 			}
+
 			los = d/dist;
+
 			phi = atan2(d(1),d(0)) - asv->psi[i];
 			while(phi <= -PI) phi += 2*PI;
 			while (phi > PI) phi -= 2*PI;
@@ -242,23 +236,17 @@ double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 					&& v_s.dot(los) > cos(PHI_AH_*DEG2RAD)*v_s.norm();			 	// obst forran
 			// Crossing situation
 			CR = v_s.dot(v_o) < cos(PHI_CR_*DEG2RAD)*v_s.norm()*v_o.norm()			//
-					&& ((SB && psi_rel > 0 && psi_rel < 150*DEG2RAD)
-						|| (!SB && psi_rel < 0 && psi_rel > -150*DEG2RAD));		// obstacle heading towards ship (from either side..)
+					&& ((SB && psi_rel > 0 )); 										// obstacle heading towards ship (from either side..)
 
 
-			mu = ( SB && HO ) || (SB && CR); //&& OT);
+			mu = ( SB && HO ) || (SB && CR && !OT);
 
-			//DEBUG
-			if (SB) mu_1 = true;
-			if (CR) mu_2 = true;
-			if (OT) mu_3 = true;
 		}
 
 		H0 = C*R + KAPPA_*mu;
 
-		// Maximizing the cost wrt. t
 		if (H0 > H1){
-			H1 = H0;
+			H1 = H0;  // Maximizing the cost with regards to time
 		}
 	}
 
@@ -267,7 +255,7 @@ double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 
 	// Print H1 and H2 for P==X
 //	ROS_DEBUG_COND_NAMED(P_ca == 0.5,"Testing","Chi: %0.0f   \tP: %0.1f  \tH1: %0.2f  \tH2: %0.2f  \tcost: %0.2f", Chi_ca*RAD2DEG, P_ca, H1, H2, cost);
-//	ROS_DEBUG_COND_NAMED(P_ca == 1 , "Testing","Chi: %0.0f   \tP: %0.1f  \tH1: %0.2f  \tH2: %0.2f  \tcost: %0.2f", Chi_ca*RAD2DEG, P_ca, H1, H2, cost);
+	ROS_DEBUG_COND_NAMED(P_ca == 1 , "Testing","Chi: %0.0f   \tP: %0.1f  \tH1: %0.2f  \tH2: %0.2f  \tcost: %0.2f", Chi_ca*RAD2DEG, P_ca, H1, H2, cost);
 	// Print H1 and H2 for all P
 //	ROS_DEBUG_NAMED("Testing","Chi: %0.0f   \tP: %0.1f  \tH1: %0.2f  \tH2: %0.2f  \tcost: %0.2f", Chi_ca*RAD2DEG, P_ca, H1, H2, cost);
 	// Print mu_1 and mu_2
@@ -279,15 +267,15 @@ double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 
 double simulationBasedMpc::Delta_P(double P_ca){
 	
-	return 40*std::abs(P_ca_last_ - P_ca); // 40-44
+	return 0.4*std::abs(P_ca_last_ - P_ca);
 }
 
 double simulationBasedMpc::Delta_Chi(double Chi_ca){
 	double dChi = Chi_ca - Chi_ca_last_;
 	if (dChi > 0){
-		return 5 + 35*pow(dChi,2); //
+		return 0.05 + 0.40*pow(dChi,2);
 	}else if (dChi < 0){
-		return 30*pow(dChi,2); //
+		return 0.35*pow(dChi,2);
 	}else{
 		return 0;
 	}

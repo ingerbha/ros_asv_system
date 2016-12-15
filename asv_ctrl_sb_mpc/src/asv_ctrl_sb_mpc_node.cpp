@@ -6,6 +6,7 @@
 
 #include "nav_msgs/OccupancyGrid.h"
 #include "asv_msgs/StateArray.h"
+#include "asv_msgs/Offset.h"
 
 #include "asv_ctrl_sb_mpc/asv_ctrl_sb_mpc.h"
 #include "asv_ctrl_sb_mpc/asv_ctrl_sb_mpc_node.h"
@@ -24,6 +25,8 @@ int main(int argc, char *argv[])
 	
 	ros::Publisher cmd_pub = n.advertise<geometry_msgs::Twist>("asv/cmd_vel",10);
 	
+	ros::Publisher os_pub = n.advertise<asv_msgs::Offset>("asv/offset",10);
+
 	ros::Subscriber obstacle_sub = n.subscribe("obstacle_states",
 											   1,
 											   &simulationBasedMpcNode::obstacleCallback,
@@ -44,7 +47,7 @@ int main(int argc, char *argv[])
 										 &simulationBasedMpcNode::cmdCallback,
 										 &sb_mpc_node);
 	
-	sb_mpc_node.initialize(&cmd_pub, &obstacle_sub, &og_sub, &asv_sub, &cmd_sub, sb_mpc);
+	sb_mpc_node.initialize(&cmd_pub, & os_pub, &obstacle_sub, &og_sub, &asv_sub, &cmd_sub, sb_mpc);
 	sb_mpc_node.start();
 	
 	ros::shutdown();
@@ -53,6 +56,7 @@ int main(int argc, char *argv[])
 	
 simulationBasedMpcNode::simulationBasedMpcNode() : sb_mpc_(NULL),
 												   cmd_pub_(NULL),
+												   os_pub_(NULL),
 												   obstacle_sub_(NULL),
 												   og_sub_(NULL),
 												   asv_sub_(NULL),
@@ -61,6 +65,7 @@ simulationBasedMpcNode::simulationBasedMpcNode() : sb_mpc_(NULL),
 simulationBasedMpcNode::~simulationBasedMpcNode() {};
 
 void simulationBasedMpcNode::initialize(ros::Publisher *cmd_pub,
+										ros::Publisher *os_pub,
 										ros::Subscriber *obstacle_sub,
 										ros::Subscriber *og_sub,
 										ros::Subscriber *asv_sub,
@@ -68,6 +73,7 @@ void simulationBasedMpcNode::initialize(ros::Publisher *cmd_pub,
 										simulationBasedMpc *sb_mpc)
 {
 	cmd_pub_ = cmd_pub;
+	os_pub_ = os_pub;
 	obstacle_sub_ = obstacle_sub;
 	og_sub_ = og_sub;
 	asv_sub_ = asv_sub;
@@ -91,6 +97,9 @@ void simulationBasedMpcNode::start()
 		if (t > 5){
 			sb_mpc_->getBestControlOffset(u_os_, psi_os_);
 			t = 0;
+			os_.P_ca = u_os_;
+			os_.Chi_ca = psi_os_;
+			os_pub_->publish(os_);
 		}
 		t += 1/rate;
 

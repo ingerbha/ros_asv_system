@@ -27,6 +27,7 @@ class simulationBasedMpcNode
 	 * @param vo
 	 */	
 	void initialize(ros::Publisher *cmd_pub,
+					ros::Publisher *os_pub,
 					ros::Subscriber *obstacle_sub,
 					ros::Subscriber *og_sub,
 					ros::Subscriber *asv_sub,
@@ -46,6 +47,7 @@ class simulationBasedMpcNode
 	private:
 	
 	geometry_msgs::Twist cmd_vel_;
+	asv_msgs::Offset os_;
 	
 	simulationBasedMpc *sb_mpc_;
 	
@@ -62,6 +64,7 @@ class simulationBasedMpcNode
 	
 	// ROS API
 	ros::Publisher *cmd_pub_;
+	ros::Publisher *os_pub_;
 	
 	ros::Subscriber *obstacle_sub_;
 	ros::Subscriber *og_sub_;
