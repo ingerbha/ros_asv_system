@@ -24,20 +24,20 @@ static const double RAD2DEG = 180.0f/PI;
 // Utils
 void rot2d(double yaw, Eigen::Vector2d &res);
 
-simulationBasedMpc::simulationBasedMpc() : 	T_(40), 				// 40
+simulationBasedMpc::simulationBasedMpc() : 	T_(50), 				// 40
 											DT_(0.05), 				// 0.05
 											P_(1), 					// 1
 											Q_(4.0), 				// 4.0
-											D_CLOSE_(100.0),
-											D_SAFE_(20.0),
-											K_COLL_(0.1),
-											PHI_AH_(30.0),
+											D_CLOSE_(100.0),		// 100.0
+											D_SAFE_(30.0),			// 20.0
+											K_COLL_(0.05),			// 0.1
+											PHI_AH_(15.0),			// 15
 											PHI_OT_(68.5),
 											PHI_HO_(22.5),
-											PHI_CR_(30),
-											KAPPA_(10.0),
-											K_P_(0.8),
-											K_CHI_(1.2)
+											PHI_CR_(15),			// 15
+											KAPPA_(3),				// 3
+											K_P_(3),				// 0.6
+											K_CHI_(1.2)				// 1.2
 {
 	n_samp = floor(T_/DT_);
 	asv_pose_ = Eigen::Vector3d(0.0, 0.0, 0.0);
@@ -68,7 +68,6 @@ void simulationBasedMpc::initialize(std::vector<asv_msgs::State> *obstacles, nav
 	double speedOffsets[] = {-1,0,0.5,1};
 	P_ca_.assign(speedOffsets, speedOffsets + sizeof(speedOffsets)/sizeof(speedOffsets[0]));
 
-	// TODO: Set n_samp for shipModel and obstacle at the same place
 	asv = new shipModel(T_,DT_);
 
 	/// @todo Remove local_map_! Only used for debugging purposes...
@@ -161,25 +160,18 @@ void simulationBasedMpc::getBestControlOffset(double &u_d_best, double &psi_d_be
 	ROS_INFO("u_os: %0.2f      psi_os: %0.2f", u_os, psi_os*RAD2DEG);
 };
 
-
 double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 { 
+	double dist,phi , psi_o, psi_rel, R, C, k_coll;
+	Eigen::Vector2d d, los,v_o, v_s;
+	bool mu, OT, SB, HO, CR;
 	double combined_radius = asv->radius + obstacles_vect[k]->radius_;
 	double d_safe = D_SAFE_ + combined_radius;
 	double d_close = D_CLOSE_ + combined_radius;
-	double dist; 
-	Eigen::Vector2d d;
-	Eigen::Vector2d los;
-	double phi , psi_o, psi_rel, R, C, k_coll;
 	double H0 = 0;
 	double H1 = 0;
 	double H2 = 0;
 	double cost = 0;
-	bool mu, OT, SB, HO, CR;
-
-	Eigen::Vector2d v_o;
-	Eigen::Vector2d v_s;
-
 	double t = 0;
 	double t0 = 0;
 
@@ -236,10 +228,10 @@ double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 					&& v_s.dot(los) > cos(PHI_AH_*DEG2RAD)*v_s.norm();			 	// obst forran
 			// Crossing situation
 			CR = v_s.dot(v_o) < cos(PHI_CR_*DEG2RAD)*v_s.norm()*v_o.norm()			//
-					&& ((SB && psi_rel > 0 )); 										// obstacle heading towards ship (from either side..)
+					&& ((SB && psi_rel > 0 )); 										// obstacle heading towards ship
 
 
-			mu = ( SB && HO ) || (SB && CR && !OT);
+			mu = ( SB && HO ) || ( CR && !OT);
 
 		}
 
@@ -267,15 +259,15 @@ double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 
 double simulationBasedMpc::Delta_P(double P_ca){
 	
-	return 0.4*std::abs(P_ca_last_ - P_ca);
+	return 0.5*std::abs(P_ca_last_ - P_ca);		// 0.5
 }
 
 double simulationBasedMpc::Delta_Chi(double Chi_ca){
 	double dChi = Chi_ca - Chi_ca_last_;
 	if (dChi > 0){
-		return 0.05 + 0.40*pow(dChi,2);
+		return 0.05 + 0.45*pow(dChi,2); 		// 0.05 0.30
 	}else if (dChi < 0){
-		return 0.35*pow(dChi,2);
+		return 0.35*pow(dChi,2);				// 0.15
 	}else{
 		return 0;
 	}
