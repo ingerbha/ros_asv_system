@@ -24,20 +24,20 @@ static const double RAD2DEG = 180.0f/PI;
 // Utils
 void rot2d(double yaw, Eigen::Vector2d &res);
 
-simulationBasedMpc::simulationBasedMpc() : 	T_(50), 				// 40
+simulationBasedMpc::simulationBasedMpc() : 	T_(50), 				// 100
 											DT_(0.05), 				// 0.05
 											P_(1), 					// 1
 											Q_(4.0), 				// 4.0
-											D_CLOSE_(100.0),		// 100.0
-											D_SAFE_(30.0),			// 20.0
-											K_COLL_(0.05),			// 0.1
+											D_CLOSE_(60.0),			// 50.0
+											D_SAFE_(20.0),			// 20.0
+											K_COLL_(0.05),			// 0.05
 											PHI_AH_(15.0),			// 15
 											PHI_OT_(68.5),
 											PHI_HO_(22.5),
 											PHI_CR_(15),			// 15
 											KAPPA_(3),				// 3
-											K_P_(3),				// 0.6
-											K_CHI_(1.2)				// 1.2
+											K_P_(3),				// 3
+											K_CHI_(1.3)				// 1.2
 {
 	n_samp = floor(T_/DT_);
 	asv_pose_ = Eigen::Vector3d(0.0, 0.0, 0.0);
@@ -60,12 +60,14 @@ void simulationBasedMpc::initialize(std::vector<asv_msgs::State> *obstacles, nav
 	P_ca_last_ = 1;		    // Keep nominal speed
 	
     double courseOffsets[] = {-90.0,-75.0,-60.0,-45.0,-30.0,-15.0,0.0,15.0,30.0,45.0,60.0,75.0,90.0};
+//	double courseOffsets[] = {-90.,-80.,-70.,-60.,-50.,-40.,-30.,-20.,-10.,0.,10.,20.,30.,40.,50.,60.,70.,80.,90};
     double sizeCO = sizeof(courseOffsets)/sizeof(courseOffsets[0]);
     for (int i = 0; i < sizeCO; i++){
     	courseOffsets[i] *= DEG2RAD;
     }
 	Chi_ca_.assign(courseOffsets, courseOffsets + sizeof(courseOffsets)/sizeof(courseOffsets[0]));
 	double speedOffsets[] = {-1,0,0.5,1};
+//	double speedOffsets[] = {-1,-0.5,0,0.5,0.75,1};
 	P_ca_.assign(speedOffsets, speedOffsets + sizeof(speedOffsets)/sizeof(speedOffsets[0]));
 
 	asv = new shipModel(T_,DT_);
@@ -247,7 +249,7 @@ double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 
 	// Print H1 and H2 for P==X
 //	ROS_DEBUG_COND_NAMED(P_ca == 0.5,"Testing","Chi: %0.0f   \tP: %0.1f  \tH1: %0.2f  \tH2: %0.2f  \tcost: %0.2f", Chi_ca*RAD2DEG, P_ca, H1, H2, cost);
-	ROS_DEBUG_COND_NAMED(P_ca == 1 , "Testing","Chi: %0.0f   \tP: %0.1f  \tH1: %0.2f  \tH2: %0.2f  \tcost: %0.2f", Chi_ca*RAD2DEG, P_ca, H1, H2, cost);
+//	ROS_DEBUG_COND_NAMED(P_ca == 1 , "Testing","Chi: %0.0f   \tP: %0.1f  \tH1: %0.2f  \tH2: %0.2f  \tcost: %0.2f", Chi_ca*RAD2DEG, P_ca, H1, H2, cost);
 	// Print H1 and H2 for all P
 //	ROS_DEBUG_NAMED("Testing","Chi: %0.0f   \tP: %0.1f  \tH1: %0.2f  \tH2: %0.2f  \tcost: %0.2f", Chi_ca*RAD2DEG, P_ca, H1, H2, cost);
 	// Print mu_1 and mu_2

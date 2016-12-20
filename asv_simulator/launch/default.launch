@@ -1,4 +1,4 @@
-<launch>
+﻿<launch>
   <arg name="u_d" default="3.0" />
   <arg name="waypoint_file" default="$(find asv_simulator)/config/waypoints/asv_waypoint_list.yaml" />
   <arg name="vessel_param_file" default="$(find asv_simulator)/config/parameters/viknes.yaml" />
