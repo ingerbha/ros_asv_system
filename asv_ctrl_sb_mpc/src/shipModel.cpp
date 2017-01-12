@@ -26,6 +26,15 @@ shipModel::shipModel(double T, double dt)
 	nu  = Eigen::Vector3d::Zero();
 	tau = Eigen::Vector3d::Zero();
 
+	A_ = 5;
+	B_ = 5;
+	C_ = 2;
+	D_ = 2;
+	L_ = A_ + B_;
+	W_ = C_ + D_;
+
+	calculate_position_offsets();
+
 	radius = 10.0; // [m] (In reality 4.15 m)
 	M = 3980.0; // [kg]
 	I_z = 19703.0; // [kg/m2]
@@ -76,22 +85,28 @@ shipModel::shipModel(double T, double dt)
 shipModel::~shipModel(){
 }
 
+double shipModel::getL(){
+	return L_;
+}
+
+double shipModel::getW(){
+	return W_;
+}
+
 
 void shipModel::eulersMethod(Eigen::Vector3d asv_pose, Eigen::Vector3d asv_twist, double u_d, double psi_d)
 {
 
 	this->clearVects();
 
-	x.push_back(asv_pose[0]);
-	y.push_back(asv_pose[1]);
 	psi.push_back(normalize_angle(asv_pose[2]));
+	x.push_back(asv_pose[0] + os_x*cos(psi[0]) - os_y*sin(psi[0]));
+	y.push_back(asv_pose[1] + os_x*sin(psi[0]) + os_y*cos(psi[0]));
 	u.push_back(asv_twist[0]);
 	v.push_back(asv_twist[1]);
 	r.push_back(asv_twist[2]);
 	
 	double t = 0;
-	double mX, mY, IN, Fx, Fy;
-	double x_dot, y_dot, psi_dot, u_dot, v_dot, r_dot, nc_dot, dc_dot;
 	Eigen::Matrix3d rot_z;
 
 	for (int i = 0; i < n_samp-1; i++){
@@ -166,6 +181,11 @@ void shipModel::updateCtrlInput(double u_d, double psi_d){
 	tau[0] = Fx;
 	tau[1] = Fy;
 	tau[2] = rudder_d * Fy;
+}
+
+void shipModel::calculate_position_offsets(){
+	os_x = A_ - B_;
+	os_y = D_ - C_;
 }
 
 void shipModel::clearVects(){

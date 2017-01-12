@@ -20,9 +20,15 @@ class obstacle
 	std::vector<double> v_;
 	double psi_;
 	double radius_;
+	double A_, B_, D_, C_, L_, W_;
+	double os_x, os_y;
+
+	double getL();
+	double getW();
 	
 	private:
 	
+	void calculatePositionOffsets();
 	void calculateTrajectory();
 	void clearVects();
 	

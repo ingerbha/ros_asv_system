@@ -80,6 +80,8 @@ void simulationBasedMpcNode::initialize(ros::Publisher *cmd_pub,
 	cmd_sub_ = cmd_sub;
 	
 	sb_mpc_ = sb_mpc;
+	u_os_ = 1;
+	psi_os_ = 0;
 	
 	sb_mpc_->initialize(&obstacles_, &map_);
 }										
@@ -95,11 +97,14 @@ void simulationBasedMpcNode::start()
 	{
 		// Run MPC every 5 seconds
 		if (t > 5){
+			tick = clock();
 			sb_mpc_->getBestControlOffset(u_os_, psi_os_);
+			tock = clock() - tick;
 			t = 0;
 			os_.P_ca = u_os_;
 			os_.Chi_ca = psi_os_;
 			os_pub_->publish(os_);
+			//ROS_INFO("Runtime: %0.2f", ((float)tock)/CLOCKS_PER_SEC);
 		}
 		t += 1/rate;
 

@@ -25,8 +25,13 @@ class shipModel
 
 	double radius; 	// [m]
 
+	double getL();
+	double getW();
+
 	private:
 	
+	void calculate_position_offsets();
+
 	void clearVects();
 
 	void updateCtrlInput(double u_d, double psi_d);
@@ -42,6 +47,9 @@ class shipModel
 	// Model Parameters
 	double M; 	// [kg]
 	double I_z; // [kg/m2]
+	double A_, B_, C_, D_, L_, W_;
+	double os_x, os_y;
+
 
 	// Added mass terms
 	double X_udot;

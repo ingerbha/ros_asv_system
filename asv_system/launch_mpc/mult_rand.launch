@@ -1,7 +1,7 @@
 ﻿<launch>
   <include file="$(find asv_simulator)/launch/default.launch">
     <arg name="waypoint_file" value="$(find asv_simulator)/config/mpc_waypoints/south_to_north.yaml" />
-    <arg name="initial_state" value="[0.0, 0.0, 1.56, 3.,0.,0.]" />
+    <arg name="initial_state" value="[0.0, 0.0, 1.56, 1.,0.,0.]" />
     <arg name="u_d" value="3.0" />
   </include>
 
@@ -13,7 +13,7 @@
     <arg name="vessel_model_file" value="$(find asv_simulator)/config/models/ship1.urdf" />
     <arg name="namespace" value="obstacles/ship1" />
     <arg name="shipname" value="ship1" />
-    <arg name="initial_state" value="[200.0, 250.0, -3.13,3.0,0.,0.]" />
+    <arg name="initial_state" value="[500.0, 450.0, -3.13,1.0,0.,0.]" />
     <arg name="u_d" value="4.0" />
   </include>
 
@@ -25,8 +25,8 @@
     <arg name="vessel_model_file" value="$(find asv_simulator)/config/models/ship2.urdf" />
     <arg name="namespace" value="obstacles/ship2" />
     <arg name="shipname" value="ship2" />
-    <arg name="initial_state" value="[-50.0,250.0, -1.56,1,0.,0.]" />
-    <arg name="u_d" value="2.0" />
+    <arg name="initial_state" value="[-250.0,450.0, -1.56,1,0.,0.]" />
+    <arg name="u_d" value="3.0" />
   </include>
   
   
@@ -38,7 +38,7 @@
     <arg name="vessel_model_file" value="$(find asv_simulator)/config/models/ship3.urdf" />
     <arg name="namespace" value="obstacles/ship3" />
     <arg name="shipname" value="ship3" />
-    <arg name="initial_state" value="[10.0,400.0, -0.77,1,0.,0.]" />
+    <arg name="initial_state" value="[10.0,600.0, -0.77,1,0.,0.]" />
     <arg name="u_d" value="3.0" />
   </include>
   

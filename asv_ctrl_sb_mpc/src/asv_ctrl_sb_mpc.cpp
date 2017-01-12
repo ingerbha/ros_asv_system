@@ -9,7 +9,7 @@
 #include <iostream>
 #include <vector>
 #include <list>
-#include <cmath>
+//#include <cmath>
 #include <Eigen/Dense>
 
 #include "asv_ctrl_sb_mpc/shipModel.h"
@@ -24,11 +24,11 @@ static const double RAD2DEG = 180.0f/PI;
 // Utils
 void rot2d(double yaw, Eigen::Vector2d &res);
 
-simulationBasedMpc::simulationBasedMpc() : 	T_(50), 				// 100
-											DT_(0.05), 				// 0.05
+simulationBasedMpc::simulationBasedMpc() : 	T_(100), 				// 100
+											DT_(0.01), 				// 0.05
 											P_(1), 					// 1
-											Q_(4.0), 				// 4.0
-											D_CLOSE_(60.0),			// 50.0
+											Q_(8.0), 				// 4.0
+											D_CLOSE_(200.0),		// 50.0
 											D_SAFE_(20.0),			// 20.0
 											K_COLL_(0.05),			// 0.05
 											PHI_AH_(15.0),			// 15
@@ -37,7 +37,7 @@ simulationBasedMpc::simulationBasedMpc() : 	T_(50), 				// 100
 											PHI_CR_(15),			// 15
 											KAPPA_(3),				// 3
 											K_P_(3),				// 3
-											K_CHI_(1.3)				// 1.2
+											K_CHI_(1.3)				// 1.3
 {
 	n_samp = floor(T_/DT_);
 	asv_pose_ = Eigen::Vector3d(0.0, 0.0, 0.0);
@@ -61,6 +61,7 @@ void simulationBasedMpc::initialize(std::vector<asv_msgs::State> *obstacles, nav
 	
     double courseOffsets[] = {-90.0,-75.0,-60.0,-45.0,-30.0,-15.0,0.0,15.0,30.0,45.0,60.0,75.0,90.0};
 //	double courseOffsets[] = {-90.,-80.,-70.,-60.,-50.,-40.,-30.,-20.,-10.,0.,10.,20.,30.,40.,50.,60.,70.,80.,90};
+//	double courseOffsets[] = {-90.,-85.,-80.,-75.,-70.,-65.,-60.,-55.,-50.,-45.,-40.,-35.,-30.,-25.,-20.,-15.,-10.,-5.,0.,5.,10.,15.,20.,25.,30.,35.,40.,45.,50.,55.,60.,65.,70.,75.,80.,85.,90};
     double sizeCO = sizeof(courseOffsets)/sizeof(courseOffsets[0]);
     for (int i = 0; i < sizeCO; i++){
     	courseOffsets[i] *= DEG2RAD;
@@ -134,16 +135,15 @@ void simulationBasedMpc::getBestControlOffset(double &u_d_best, double &psi_d_be
 			for (int k = 0; k < obstacles_vect.size(); k++){
 
 				cost_k = costFnc(P_ca_[j], Chi_ca_[i], k);
-				
 				if (cost_k > cost_i){
-					cost_i = cost_k; 	// Maximizing cost associated with this scenario
+					cost_i = cost_k;	// Maximizing cost associated with this scenario
 				}
 			}
 
 			if (cost_i < cost){
-				cost = cost_i; 		// Minimizing the overall cost
-				u_os = P_ca_[j];
-				psi_os = Chi_ca_[i];
+				cost = cost_i; 			// Minimizing the overall cost
+				u_d_best = P_ca_[j];
+				psi_d_best = Chi_ca_[i];
 			}
 		}
 	}
@@ -153,23 +153,20 @@ void simulationBasedMpc::getBestControlOffset(double &u_d_best, double &psi_d_be
 	}
 	obstacles_vect.clear();
 
-	P_ca_last_ = u_os;
-	Chi_ca_last_ = psi_os;
-
-	u_d_best = u_os;
-	psi_d_best = psi_os;
+	P_ca_last_ = u_d_best;
+	Chi_ca_last_ = psi_d_best;
 	
-	ROS_INFO("u_os: %0.2f      psi_os: %0.2f", u_os, psi_os*RAD2DEG);
+	ROS_INFO("u_os: %0.2f      psi_os: %0.2f", u_d_best, psi_d_best*RAD2DEG);
 };
 
 double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 { 
-	double dist,phi , psi_o, psi_rel, R, C, k_coll;
-	Eigen::Vector2d d, los,v_o, v_s;
+	double dist, phi, psi_o, phi_o, psi_rel, R, C, k_coll, d_safe_i;
+	Eigen::Vector2d d, los, los_inv, v_o, v_s;
 	bool mu, OT, SB, HO, CR;
-	double combined_radius = asv->radius + obstacles_vect[k]->radius_;
-	double d_safe = D_SAFE_ + combined_radius;
-	double d_close = D_CLOSE_ + combined_radius;
+	double combined_radius = asv->getL() + obstacles_vect[k]->getL();
+	double d_safe = D_SAFE_;
+	double d_close = D_CLOSE_;
 	double H0 = 0;
 	double H1 = 0;
 	double H2 = 0;
@@ -185,30 +182,23 @@ double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 		d(1) = obstacles_vect[k]->y_[i] - asv->y[i];
 		dist = d.norm();
 
-		v_o(0) = obstacles_vect[k]->u_[i];
-		v_o(1) = obstacles_vect[k]->v_[i];
-		rot2d(obstacles_vect[k]->psi_,v_o);
-
-		v_s(0) = asv->u[i];
-		v_s(1) = asv->v[i];
-		rot2d(asv->psi[i],v_s);
-
-		psi_o = obstacles_vect[k]->psi_;
-		while(psi_o <= -M_PI) phi += 2*M_PI;
-		while (psi_o > M_PI) phi -= 2*M_PI;
-
 		R = 0;
 		C = 0;
 		mu = 0;
 
 		if (dist < d_close){
-			if (dist < d_safe){
-				R = (1/pow(fabs(t-t0),P_))*pow(d_safe/dist,Q_);
-				k_coll = K_COLL_*combined_radius;
-				C = k_coll*pow((v_s-v_o).norm(),2);
-			}
 
-			los = d/dist;
+			v_o(0) = obstacles_vect[k]->u_[i];
+			v_o(1) = obstacles_vect[k]->v_[i];
+			rot2d(obstacles_vect[k]->psi_,v_o);
+
+			v_s(0) = asv->u[i];
+			v_s(1) = asv->v[i];
+			rot2d(asv->psi[i],v_s);
+
+			psi_o = obstacles_vect[k]->psi_;
+			while(psi_o <= -M_PI) phi += 2*M_PI;
+			while (psi_o > M_PI) phi -= 2*M_PI;
 
 			phi = atan2(d(1),d(0)) - asv->psi[i];
 			while(phi <= -PI) phi += 2*PI;
@@ -218,20 +208,55 @@ double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 			while(psi_rel < -M_PI) psi_rel += 2*M_PI;
 			while(psi_rel > M_PI) psi_rel -= 2*M_PI;
 
+			los = d/dist;
+			los_inv = -d/dist;
+
+			if (phi < 0 && psi_rel > 0){
+				d_safe_i = 0.5*d_safe + combined_radius;
+			}else{
+				d_safe_i = d_safe + combined_radius;
+			}
+
+//			// Calculating d_safe
+//			if (v_s.dot(los) > cos(PHI_AH_*DEG2RAD)*v_s.norm()){ // obst ahead
+//				d_safe_i = d_safe + asv->getL()/2;
+//			}else if (v_s.dot(los) > cos(PHI_OT_*DEG2RAD)*v_s.norm()){ // obst behind
+//				d_safe_i = 0.5*d_safe + asv->getL()/2;
+//			}else{
+//				d_safe_i = 0.5*d_safe + asv->getW()/2;
+//			}
+//
+//			phi_o = atan2(-d(1),d(0)) - obstacles_vect[k]->psi_;
+//			while(phi_o <= -M_PI) phi_o += 2*M_PI;
+//			while (phi_o > M_PI) phi_o -= 2*M_PI;
+//			if (v_o.dot(los_inv) > cos(PHI_AH_*DEG2RAD)*v_o.norm()){
+//				d_safe_i += d_safe + obstacles_vect[k]->getL()/2;
+//			}else if(v_o.dot(los_inv) > cos(PHI_OT_*DEG2RAD)*v_o.norm()){
+//				d_safe_i += 0.5*d_safe + obstacles_vect[k]->getL()/2;
+//			}else{
+//				d_safe_i += 0.5*d_safe + obstacles_vect[k]->getW()/2;
+//			}
+
+
+			if (dist < d_safe_i){
+				R = (1/pow(fabs(t-t0),P_))*pow(d_safe/dist,Q_);
+				k_coll = K_COLL_*obstacles_vect[k]->getL()*obstacles_vect[k]->getL();
+				C = k_coll*pow((v_s-v_o).norm(),2);
+			}
+
 
 			// Overtaken by obstacle
-			OT = v_s.dot(v_o) > cos(PHI_OT_*DEG2RAD)*v_s.norm()*v_o.norm()  // ca samme retning
-					&& v_s.norm() < v_o.norm();								// obst kjører raskere
+			OT = v_s.dot(v_o) > cos(PHI_OT_*DEG2RAD)*v_s.norm()*v_o.norm()
+					&& v_s.norm() < v_o.norm();
 			// Obstacle on starboard side
 			SB = phi < 0;
 			// Obstacle Head-on
 			HO = v_o.norm() > 0.05
-					&& v_s.dot(v_o) < -cos(PHI_HO_*DEG2RAD)*v_s.norm()*v_o.norm()   // hastigheter i motsatt retn
-					&& v_s.dot(los) > cos(PHI_AH_*DEG2RAD)*v_s.norm();			 	// obst forran
+					&& v_s.dot(v_o) < -cos(PHI_HO_*DEG2RAD)*v_s.norm()*v_o.norm()
+					&& v_s.dot(los) > cos(PHI_AH_*DEG2RAD)*v_s.norm();
 			// Crossing situation
-			CR = v_s.dot(v_o) < cos(PHI_CR_*DEG2RAD)*v_s.norm()*v_o.norm()			//
-					&& ((SB && psi_rel > 0 )); 										// obstacle heading towards ship
-
+			CR = v_s.dot(v_o) < cos(PHI_CR_*DEG2RAD)*v_s.norm()*v_o.norm()
+					&& ((SB && psi_rel > 0 ));
 
 			mu = ( SB && HO ) || ( CR && !OT);
 
@@ -249,7 +274,7 @@ double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 
 	// Print H1 and H2 for P==X
 //	ROS_DEBUG_COND_NAMED(P_ca == 0.5,"Testing","Chi: %0.0f   \tP: %0.1f  \tH1: %0.2f  \tH2: %0.2f  \tcost: %0.2f", Chi_ca*RAD2DEG, P_ca, H1, H2, cost);
-//	ROS_DEBUG_COND_NAMED(P_ca == 1 , "Testing","Chi: %0.0f   \tP: %0.1f  \tH1: %0.2f  \tH2: %0.2f  \tcost: %0.2f", Chi_ca*RAD2DEG, P_ca, H1, H2, cost);
+	ROS_DEBUG_COND_NAMED(P_ca == 1 , "Testing","Chi: %0.0f   \tP: %0.1f  \tH1: %0.2f  \tH2: %0.2f  \tcost: %0.2f", Chi_ca*RAD2DEG, P_ca, H1, H2, cost);
 	// Print H1 and H2 for all P
 //	ROS_DEBUG_NAMED("Testing","Chi: %0.0f   \tP: %0.1f  \tH1: %0.2f  \tH2: %0.2f  \tcost: %0.2f", Chi_ca*RAD2DEG, P_ca, H1, H2, cost);
 	// Print mu_1 and mu_2
@@ -261,15 +286,15 @@ double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 
 double simulationBasedMpc::Delta_P(double P_ca){
 	
-	return 0.5*std::abs(P_ca_last_ - P_ca);		// 0.5
+	return 0.2*std::abs(P_ca_last_ - P_ca);		// 0.5
 }
 
 double simulationBasedMpc::Delta_Chi(double Chi_ca){
 	double dChi = Chi_ca - Chi_ca_last_;
 	if (dChi > 0){
-		return 0.05 + 0.45*pow(dChi,2); 		// 0.05 0.30
+		return 1*pow(dChi,2); 		// 0.006 0.45
 	}else if (dChi < 0){
-		return 0.35*pow(dChi,2);				// 0.15
+		return 0.5*pow(dChi,2);				// 0.35
 	}else{
 		return 0;
 	}

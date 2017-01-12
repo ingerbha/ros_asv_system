@@ -12,16 +12,24 @@ obstacle::obstacle(double x_0, double y_0, double u_0, double v_0,  double psi_0
 	dt_ = dt;
 	n_samp_ = T_/dt_;
 	
-	this->clearVects();
-	x_.push_back(x_0);
-	y_.push_back(y_0);
-	u_.push_back(u_0);
-	v_.push_back(v_0);
-	//u.push_back(cos(psi_0)*u_0-sin(psi_0)*v_0);
-	//v.push_back(sin(psi_0)*u_0+sin(psi_0)*v_0);
+	A_ = 5;
+	B_ = 5;
+	C_ = 2;
+	D_ = 2;
+	L_ = A_ + B_;
+	W_ = C_ + D_;
+
 	psi_ = psi_0;
 	radius_ = radius;
+
+	this->clearVects();
+	x_.push_back(x_0 + os_x*cos(psi_) - os_y*sin(psi_));
+	y_.push_back(y_0 + os_x*sin(psi_) + os_y*cos(psi_));
+	u_.push_back(u_0);
+	v_.push_back(v_0);
 	
+
+
 	r11_ = cos(psi_);
 	r12_ = -sin(psi_);
 	r21_ = sin(psi_);
@@ -33,6 +41,19 @@ obstacle::obstacle(double x_0, double y_0, double u_0, double v_0,  double psi_0
 obstacle::~obstacle()
 {
 };
+
+double obstacle::getL(){
+	return L_;
+}
+
+double obstacle::getW(){
+	return W_;
+}
+
+void obstacle::calculatePositionOffsets(){
+	os_x = A_ - B_;
+	os_y = D_ - C_;
+}
 
 void obstacle::calculateTrajectory()
 {
