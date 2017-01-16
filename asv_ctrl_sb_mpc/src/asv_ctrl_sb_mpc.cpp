@@ -34,7 +34,7 @@ simulationBasedMpc::simulationBasedMpc() : 	T_(200), 				// 100.0
 											PHI_AH_(15.0),			//  15.0
 											PHI_OT_(68.5),			//  68.5
 											PHI_HO_(22.5),			//  22.5
-											PHI_CR_(15),			//  15.0
+											PHI_CR_(15.0),			//  15.0
 											KAPPA_(3.0),			//   3.0
 											K_P_(3.0),				//   3.0
 											K_CHI_(1.3),			//   1.3
