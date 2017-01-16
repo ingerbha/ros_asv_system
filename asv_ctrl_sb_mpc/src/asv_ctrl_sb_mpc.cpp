@@ -24,8 +24,8 @@ static const double RAD2DEG = 180.0f/PI;
 // Utils
 void rot2d(double yaw, Eigen::Vector2d &res);
 
-simulationBasedMpc::simulationBasedMpc() : 	T_(100), 				// 100.0
-											DT_(0.05), 				//   0.05
+simulationBasedMpc::simulationBasedMpc() : 	T_(200), 				// 100.0
+											DT_(0.1), 				//   0.05
 											P_(1), 					//   1.0
 											Q_(4.0), 				//   8.0
 											D_CLOSE_(200.0),		// 200.0
