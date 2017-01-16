@@ -16,12 +16,14 @@ class shipModel
 	
 	void eulersMethod(Eigen::Vector3d asv_pose, Eigen::Vector3d asv_twist, double u_d, double psi_d);
 
-	std::vector<double> x;
-	std::vector<double> y;
-	std::vector<double> psi;
-	std::vector<double> u;
-	std::vector<double> v;
-	std::vector<double> r;
+	void linearPrediction(Eigen::Vector3d asv_pose, Eigen::Vector3d asv_twist, double u_d, double psi_d);
+
+	Eigen::VectorXd x;
+	Eigen::VectorXd y;
+	Eigen::VectorXd psi;
+	Eigen::VectorXd u;
+	Eigen::VectorXd v;
+	Eigen::VectorXd r;
 
 	double radius; 	// [m]
 
@@ -32,12 +34,8 @@ class shipModel
 	
 	void calculate_position_offsets();
 
-	void clearVects();
+	void updateCtrlInput(double u_d, double psi_d, int i);
 
-	void updateCtrlInput(double u_d, double psi_d);
-
-	Eigen::Vector3d eta;
-	Eigen::Vector3d nu;
 	Eigen::Vector3d tau;
 
 	Eigen::Matrix3d Minv;

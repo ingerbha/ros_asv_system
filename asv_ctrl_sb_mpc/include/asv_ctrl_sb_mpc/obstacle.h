@@ -14,10 +14,11 @@ class obstacle
 	/// Destructor
 	~obstacle();
 
-	std::vector<double> x_;
-	std::vector<double> y_;
-	std::vector<double> u_;
-	std::vector<double> v_;
+	Eigen::VectorXd x_;
+	Eigen::VectorXd y_;
+	Eigen::VectorXd u_;
+	Eigen::VectorXd v_;
+
 	double psi_;
 	double radius_;
 	double A_, B_, D_, C_, L_, W_;
@@ -30,7 +31,6 @@ class obstacle
 	
 	void calculatePositionOffsets();
 	void calculateTrajectory();
-	void clearVects();
 	
 	int n_samp_;
 	double T_;

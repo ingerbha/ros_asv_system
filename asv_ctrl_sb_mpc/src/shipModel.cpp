@@ -1,6 +1,7 @@
 #include <ros/console.h>
 
 #include "asv_ctrl_sb_mpc/shipModel.h"
+#include <Eigen/Dense>
 
 //Debug
 #include <typeinfo>
@@ -22,8 +23,13 @@ shipModel::shipModel(double T, double dt)
 	DT_ = dt;
 	n_samp = floor(T_/DT_);
 
-	eta = Eigen::Vector3d::Zero();
-	nu  = Eigen::Vector3d::Zero();
+	x.resize(n_samp);
+	y.resize(n_samp);
+	psi.resize(n_samp);
+	u.resize(n_samp);
+	v.resize(n_samp);
+	r.resize(n_samp);
+
 	tau = Eigen::Vector3d::Zero();
 
 	A_ = 5;
@@ -93,78 +99,103 @@ double shipModel::getW(){
 	return W_;
 }
 
+void shipModel::linearPrediction(Eigen::Vector3d asv_pose, Eigen::Vector3d asv_twist, double u_d, double psi_d){
+
+	psi(0) = normalize_angle(asv_pose(2));
+	x(0) = asv_pose(0) + os_x*cos(asv_pose(2)) - os_y*sin(asv_pose(2));
+	y(0) = asv_pose(1) + os_x*sin(asv_pose(2)) + os_y*cos(asv_pose(2));
+	u(0) = asv_twist(0);
+	v(0) = asv_twist(1);
+	r(0) = asv_twist(2);
+
+	double r11, r12, r21, r22;
+
+	r11 = cos(psi_d);
+	r12 = -sin(psi_d);
+	r21 = sin(psi_d);
+	r22 = cos(psi_d);
+
+	for (int i = 0; i < n_samp-1; i++){
+
+		x(i+1) = x(i) + DT_*(r11*u(i) + r12*v(i));
+		y(i+1) = y(i) + DT_*(r21*u(i) + r22*v(i));
+		psi(i+1) = psi_d;
+		u(i+1) = u_d;
+		v(i+1) = 0;
+
+	}
+}
+
 
 void shipModel::eulersMethod(Eigen::Vector3d asv_pose, Eigen::Vector3d asv_twist, double u_d, double psi_d)
 {
 
-	this->clearVects();
+	psi(0) = normalize_angle(asv_pose(2));
+	x(0) = asv_pose(0) + os_x*cos(psi(0)) - os_y*sin(psi(0));
+	y(0) = asv_pose(1) + os_x*sin(psi(0)) + os_y*cos(psi(0));
+	u(0) = asv_twist(0);
+	v(0) = asv_twist(1);
+	r(0) = asv_twist(2);
 
-	psi.push_back(normalize_angle(asv_pose[2]));
-	x.push_back(asv_pose[0] + os_x*cos(psi[0]) - os_y*sin(psi[0]));
-	y.push_back(asv_pose[1] + os_x*sin(psi[0]) + os_y*cos(psi[0]));
-	u.push_back(asv_twist[0]);
-	v.push_back(asv_twist[1]);
-	r.push_back(asv_twist[2]);
-	
+	double x_, y_, psi_, u_, v_, r_;
 	double t = 0;
-	Eigen::Matrix3d rot_z;
+	Eigen::Vector3d temp;
+	double r11, r12, r21, r22; // rotation matrix elements
 
 	for (int i = 0; i < n_samp-1; i++){
 
-		eta[0] = x[i];
-		eta[1] = y[i];
-		eta[2] =psi[i];
-		nu[0] = u[i];
-		nu[1] = v[i];
-		nu[2] = r[i];
-
 		t += DT_;
-		
-		psi_d = normalize_angle_diff(psi_d, psi[i]);
 
-		//rot_z = Eigen::AngleAxisd(eta[2], Eigen::Vector3d::UnitZ());
+		psi_d = normalize_angle_diff(psi_d, psi(i));
 
-		rot_z << cos(eta[2]), -sin(eta[2]), 0,
-				 sin(eta[2]), sin(eta[2]), 0,
-				 0,0,1;
+		r11 = cos(psi(i));
+		r12 = -sin(psi(i));
+		r21 = sin(psi(i));
+		r22 = cos(psi(i));
 
 		// Calculate coriolis and dampening matrices according to Fossen, 2011 or Stenersen, 2014.
-		Cvv[0] = (-M*nu[1] + Y_vdot*nu[1] + Y_rdot*nu[2]) * nu[2];
-		Cvv[1] = ( M*nu[0] - X_udot*nu[0]) * nu[2];
-		Cvv[2] = (( M*nu[1] - Y_vdot*nu[1] - Y_rdot*nu[2] ) * nu[0] +
-		            ( -M*nu[0] + X_udot*nu[0] ) * nu[1]);
+		Cvv(0) = (-M*v(i) + Y_vdot*v(i) + Y_rdot*r(i)) * r(i);
+		Cvv(1) = ( M*u(i) - X_udot*u(i)) * r(i);
+		Cvv(2) = (( M*v(i) - Y_vdot*v(i) - Y_rdot*r(i) ) * u(i) +
+		            ( -M*u(i) + X_udot*u(i)) * v(i));
 
-		Dvv[0] = - (X_u + X_uu*fabs(nu[0]) + X_uuu*nu[0]*nu[0]) * nu[0];
-		Dvv[1] = - ((Y_v*nu[1] + Y_r*nu[2]) +
-		              (Y_vv*fabs(nu[1])*nu[1] + Y_vvv*nu[1]*nu[1]*nu[1]));
-		Dvv[2] = - ((N_v*nu[1] + N_r*nu[2]) +
-		              (N_rr*fabs(nu[2])*nu[2] + N_rrr*nu[2]*nu[2]*nu[2]));
+		Dvv(0) = - (X_u + X_uu*fabs(u(i)) + X_uuu*u(i)*u(i)) * u(i);
+		Dvv(1) = - ((Y_v*v(i) + Y_r*r(i)) +
+		              (Y_vv*fabs(v(i))*v(i) + Y_vvv*v(i)*v(i)*v(i)));
+		Dvv(2) = - ((N_v*v(i) + N_r*r(i)) +
+		              (N_rr*fabs(r(i))*r(i) + N_rrr*r(i)*r(i)*r(i)));
 
-		this->updateCtrlInput(u_d, psi_d);
+		this->updateCtrlInput(u_d, psi_d, i);
 
 		// Integrate system
-		eta += DT_ * (rot_z * nu);
-		nu  += DT_ * (Minv * (tau- Cvv - Dvv));
+
+		x(i+1) = x(i) + DT_*(r11*u(i) + r12*v(i));
+		y(i+1) = y(i) + DT_*(r21*u(i) + r22*v(i));
+		psi(i+1) = psi(i) + DT_*r(i);
+		temp = Minv * (tau - Cvv - Dvv);
+		u(i+1) = u(i) + DT_*temp(0);
+		v(i+1) = v(i) + DT_*temp(1);
+		r(i+1) = r(i) + DT_*temp(2);
+
+		x_ = x(i);
+		y_ = y(i);
+		psi_ = psi(i);
+		u_ = u(i);
+		v_ = v(i);
+		r_= r(i);
 
 		// Keep yaw within [-PI,PI)
-		eta[2] = normalize_angle(eta[2]);
+		psi(i+1) = normalize_angle(psi(i+1));
 
-		x.push_back(eta[0]);
-		y.push_back(eta[1]);
-		psi.push_back(eta[2]);
-		u.push_back(nu[0]);
-		v.push_back(nu[1]);
-		r.push_back(nu[2]);
-
-	} 
-
+	}
 }
 
-void shipModel::updateCtrlInput(double u_d, double psi_d){
-	double Fx = Cvv[0] + Dvv[0] + Kp_u*M*(u_d - nu[0]);
+
+void shipModel::updateCtrlInput(double u_d, double psi_d, int i){
+	double Fx = Cvv[0] + Dvv[0] + Kp_u*M*(u_d - u(i));
 	double Fy = 0.0;
 
-    Fy = (Kp_psi * I_z ) * ((psi_d - eta[2]) - Kd_psi*nu[2]);
+    Fy = (Kp_psi * I_z ) * ((psi_d - psi(i)) - Kd_psi*r(i));
     Fy *= 1.0 / rudder_d;
 
 	// Saturate
@@ -186,15 +217,6 @@ void shipModel::updateCtrlInput(double u_d, double psi_d){
 void shipModel::calculate_position_offsets(){
 	os_x = A_ - B_;
 	os_y = D_ - C_;
-}
-
-void shipModel::clearVects(){
-	x.clear();
-	y.clear();
-	psi.clear();
-	u.clear();
-	v.clear();
-	r.clear();
 }
 
 

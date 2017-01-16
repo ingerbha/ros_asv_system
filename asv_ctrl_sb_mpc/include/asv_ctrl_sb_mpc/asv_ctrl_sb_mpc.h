@@ -89,6 +89,9 @@ class simulationBasedMpc
 		const double KAPPA_;
 		const double K_P_;
 		const double K_CHI_;
+		const double K_DP_;
+		const double K_DCHI_SB_;
+		const double K_DCHI_P_;
 		
 		const double T_; 	// Prediction horizon
 		const double DT_;	// Step length, obstacle trajectory prediction 		
