@@ -24,23 +24,23 @@ static const double RAD2DEG = 180.0f/PI;
 // Utils
 void rot2d(double yaw, Eigen::Vector2d &res);
 
-simulationBasedMpc::simulationBasedMpc() : 	T_(200), 				// 100.0
-											DT_(0.1), 				//   0.05
+simulationBasedMpc::simulationBasedMpc() : 	T_(300.0), 				// 150.0  //300
+											DT_(0.5), 				//   0.05 // 0.5
 											P_(1), 					//   1.0
-											Q_(4.0), 				//   8.0
+											Q_(4.0), 				//   4.0
 											D_CLOSE_(200.0),		// 200.0
-											D_SAFE_(50.0),			//  75.0
-											K_COLL_(0.05),			//   0.05
+											D_SAFE_(40.0),			//  40.0
+											K_COLL_(0.5),			//   0.5
 											PHI_AH_(15.0),			//  15.0
 											PHI_OT_(68.5),			//  68.5
 											PHI_HO_(22.5),			//  22.5
-											PHI_CR_(15.0),			//  15.0
-											KAPPA_(3.0),			//   3.0
-											K_P_(3.0),				//   3.0
+											PHI_CR_(68.5),			//  68.0
+											KAPPA_(2.0),			//   3.0
+											K_P_(4.0),				//   2.5  // 4.0
 											K_CHI_(1.3),			//   1.3
-											K_DP_(1.5),				//   0.2
-											K_DCHI_SB_(0.9),		//   0.5
-											K_DCHI_P_(1.2)			//   1.0
+											K_DP_(3.5),				//   2.0  // 3.5
+											K_DCHI_SB_(0.9),		//   0.9
+											K_DCHI_P_(1.2)			//   1.2
 {
 	n_samp = floor(T_/DT_);
 	asv_pose_ = Eigen::Vector3d(0.0, 0.0, 0.0);
@@ -120,7 +120,7 @@ void simulationBasedMpc::getBestControlOffset(double &u_d_best, double &psi_d_be
 		obstacle *obst = new obstacle(it->x,it->y,it->u,it->v, it->psi, it->header.radius, T_, DT_);
 		obstacles_vect.push_back(obst);
 	}
-	
+
 	if (obstacles_vect.size() == 0){
 		u_d_best = 1;
 		psi_d_best = 0;
@@ -128,6 +128,7 @@ void simulationBasedMpc::getBestControlOffset(double &u_d_best, double &psi_d_be
 		Chi_ca_last_ = 0;
 		return;
 	}
+	
 
 	for (int i = 0; i < Chi_ca_.size(); i++){
 		for (int j = 0; j < P_ca_.size(); j++){
@@ -159,7 +160,7 @@ void simulationBasedMpc::getBestControlOffset(double &u_d_best, double &psi_d_be
 	P_ca_last_ = u_d_best;
 	Chi_ca_last_ = psi_d_best;
 	
-	ROS_INFO("u_os: %0.2f      psi_os: %0.2f", u_d_best, psi_d_best*RAD2DEG);
+	ROS_INFO("u_os: %0.2f      psi_os: %0.2f    cost: %0.2f", u_d_best, psi_d_best*RAD2DEG, cost);
 };
 
 double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
@@ -183,7 +184,6 @@ double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 		d(0) = obstacles_vect[k]->x_[i] - asv->x[i];
 		d(1) = obstacles_vect[k]->y_[i] - asv->y[i];
 		dist = d.norm();
-//		ROS_DEBUG_COND_NAMED(i == 0,"Testing","O: (%0.0f,%0.0f) ASV: ( %0.0f,%0.0f)", obstacles_vect[k]->x_[i],obstacles_vect[k]->y_[i], asv->x[i],asv->y[i]);
 
 		R = 0;
 		C = 0;
@@ -214,17 +214,11 @@ double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 			los = d/dist;
 			los_inv = -d/dist;
 
-//			if (phi < 0 && psi_rel > 0){
-//				d_safe_i = 0.5*d_safe + combined_radius;
-//			}else{
-//				d_safe_i = d_safe + combined_radius;
-//			}
-
 			// Calculating d_safe
-			if (phi < PHI_AH_){//v_s.dot(los) > cos(PHI_AH_*DEG2RAD)*v_s.norm()){ // obst ahead
+			if (phi < PHI_AH_*DEG2RAD){						 	// obst ahead
 				d_safe_i = d_safe + asv->getL()/2;
-			}else if (phi > PHI_OT_){//v_s.dot(los) > cos(PHI_OT_*DEG2RAD)*v_s.norm()){ // obst behind
-				d_safe_i = 0.1*d_safe + asv->getL()/2;
+			}else if (phi > PHI_OT_*DEG2RAD){					// obst behind
+				d_safe_i = d_safe + asv->getL()/2;
 			}else{
 				d_safe_i = d_safe + asv->getW()/2;
 			}
@@ -233,12 +227,17 @@ double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 			while(phi_o <= -M_PI) phi_o += 2*M_PI;
 			while (phi_o > M_PI) phi_o -= 2*M_PI;
 
-			if (phi_o < PHI_AH_){//v_o.dot(los_inv) > cos(PHI_AH_*DEG2RAD)*v_o.norm()){ // ship ahead
+			if (phi_o < PHI_AH_*DEG2RAD){						// ship ahead
 				d_safe_i += d_safe + obstacles_vect[k]->getL()/2;
-			}else if(phi_o > PHI_OT_){//v_o.dot(los_inv) > cos(PHI_OT_*DEG2RAD)*v_o.norm()){ // ship behind
-				d_safe_i += 0.1*d_safe + obstacles_vect[k]->getL()/2;
+			}else if(phi_o > PHI_OT_*DEG2RAD){			 		// ship behind
+				d_safe_i += 0.5*d_safe + obstacles_vect[k]->getL()/2;
 			}else{
 				d_safe_i += d_safe + obstacles_vect[k]->getW()/2;
+			}
+
+			if (v_s.dot(v_o) > cos(PHI_OT_*DEG2RAD)*v_s.norm()*v_o.norm() // overtaing situation
+								&& v_s.norm() > v_o.norm()){
+				d_safe_i = d_safe + asv->getL()/2 + obstacles_vect[k]->getL()/2;
 			}
 
 
@@ -247,6 +246,7 @@ double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 				k_coll = K_COLL_*obstacles_vect[k]->getL()*obstacles_vect[k]->getL();
 				C = k_coll*pow((v_s-v_o).norm(),2);
 			}
+
 
 
 			// Overtaken by obstacle
@@ -259,8 +259,8 @@ double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 					&& v_s.dot(v_o) < -cos(PHI_HO_*DEG2RAD)*v_s.norm()*v_o.norm()
 					&& v_s.dot(los) > cos(PHI_AH_*DEG2RAD)*v_s.norm();
 			// Crossing situation
-			CR = v_s.dot(v_o) < cos(PHI_CR_*DEG2RAD)*v_s.norm()*v_o.norm()
-					&& ((SB && psi_rel > 0 ));
+			CR = (v_s.dot(v_o) < cos(PHI_CR_*DEG2RAD)*v_s.norm()*v_o.norm() // changed
+					&& (SB && psi_rel > 0 ));
 
 			mu = ( SB && HO ) || ( CR && !OT);
 
@@ -278,7 +278,8 @@ double simulationBasedMpc::costFnc(double P_ca, double Chi_ca, int k)
 
 	// Print H1 and H2 for P==X
 //	ROS_DEBUG_COND_NAMED(P_ca == 0.5,"Testing","Chi: %0.0f   \tP: %0.1f  \tH1: %0.2f  \tH2: %0.2f  \tcost: %0.2f", Chi_ca*RAD2DEG, P_ca, H1, H2, cost);
-	ROS_DEBUG_COND_NAMED(P_ca == 1 , "Testing","Chi: %0.0f   \tP: %0.1f  \tH1: %0.2f  \tH2: %0.2f  \tcost: %0.2f", Chi_ca*RAD2DEG, P_ca, H1, H2, cost);
+//	ROS_DEBUG_COND_NAMED(k == 2 , "Testing","Chi: %0.0f   \tP: %0.1f  \tH1: %0.2f  \tH2: %0.2f  \tcost: %0.2f", Chi_ca*RAD2DEG, P_ca, H1, H2, cost);
+//	ROS_DEBUG_STREAM_COND_NAMED(P_ca == 1, "Testing","Chi: " << Chi_ca*RAD2DEG << "  \tSB " << sb << "\tCR " << cr << "\tHO " << ho << "\tOT " << ot);
 	// Print H1 and H2 for all P
 //	ROS_DEBUG_NAMED("Testing","Chi: %0.0f   \tP: %0.1f  \tH1: %0.2f  \tH2: %0.2f  \tcost: %0.2f", Chi_ca*RAD2DEG, P_ca, H1, H2, cost);
 	// Print mu_1 and mu_2

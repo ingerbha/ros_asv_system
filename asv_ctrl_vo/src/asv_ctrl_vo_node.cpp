@@ -6,6 +6,7 @@
 #include "nav_msgs/OccupancyGrid.h"
 #include "asv_msgs/StateArray.h"
 #include "visualization_msgs/Marker.h"
+#include "asv_msgs/Offset.h"
 
 #include "asv_ctrl_vo/asv_ctrl_vo.h"
 #include "asv_ctrl_vo/asv_ctrl_vo_node.h"
@@ -25,6 +26,7 @@ int main(int argc, char *argv[])
 
   ros::Publisher mk_pub = n.advertise<visualization_msgs::Marker>("vo_markers", 1);
   ros::Publisher cmd_pub = n.advertise<geometry_msgs::Twist>("asv/cmd_vel", 10);
+  ros::Publisher os_pub = n.advertise<asv_msgs::Offset>("asv/offset",10);
 
   ros::Subscriber obstacle_sub = n.subscribe("obstacle_states",
                                              1,
@@ -45,7 +47,7 @@ int main(int argc, char *argv[])
                                         &VelocityObstacleNode::cmdCallback,
                                         &vo_node);
 
-  vo_node.initialize(&cmd_pub, &mk_pub, &obstacle_sub, &og_sub, &asv_sub, &cmd_sub, vo);
+  vo_node.initialize(&cmd_pub, &mk_pub, &os_pub, &obstacle_sub, &og_sub, &asv_sub, &cmd_sub, vo);
   vo_node.start();
 
   ros::shutdown();
@@ -56,6 +58,7 @@ int main(int argc, char *argv[])
 VelocityObstacleNode::VelocityObstacleNode() : vo_(NULL),
                                                cmd_pub_(NULL),
                                                mk_pub_(NULL),
+											   os_pub_(NULL),
                                                obstacle_sub_(NULL),
                                                og_sub_(NULL),
                                                asv_sub_(NULL),
@@ -65,6 +68,7 @@ VelocityObstacleNode::~VelocityObstacleNode() {}
 
 void VelocityObstacleNode::initialize(ros::Publisher *cmd_pub,
                                       ros::Publisher *mk_pub,
+									  ros::Publisher *os_pub,
                                       ros::Subscriber *obstacle_sub,
                                       ros::Subscriber *og_sub,
                                       ros::Subscriber *asv_sub,
@@ -73,6 +77,7 @@ void VelocityObstacleNode::initialize(ros::Publisher *cmd_pub,
 {
   cmd_pub_ = cmd_pub;
   mk_pub_ = mk_pub;
+  os_pub_ = os_pub;
   obstacle_sub_ = obstacle_sub;
   og_sub_ = og_sub;
   asv_sub_ = asv_sub;
@@ -101,6 +106,9 @@ void VelocityObstacleNode::start()
       marker_.header.stamp = ros::Time();
       mk_pub_->publish(marker_);
       cmd_pub_->publish(cmd_vel_);
+      os_.P_ca = cmd_vel_.linear.x/vo_->getUD();
+      os_.Chi_ca = cmd_vel_.angular.y - vo_->getPsiD();
+      os_pub_->publish(os_);
 
       //tock = clock();
       //ROS_INFO("Loop speed: %.2f ms", ((float) (tock-tick)/CLOCKS_PER_SEC * 1e3 ));

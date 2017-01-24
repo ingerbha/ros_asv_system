@@ -67,6 +67,9 @@ class VelocityObstacle
    */
   void getBestControlInput(double &u_best, double &psi_best);
   
+  double getUD();
+  double getPsiD();
+
  private:
   void setVelocity(const int &ui, const int &ti, const double &val);
   void updateVelocityGrid();

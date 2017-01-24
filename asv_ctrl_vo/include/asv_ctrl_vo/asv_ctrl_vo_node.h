@@ -4,6 +4,7 @@
 #include "asv_msgs/StateArray.h"
 #include "nav_msgs/Odometry.h"
 #include "visualization_msgs/Marker.h"
+#include "asv_msgs/Offset.h"
 
 #include <vector>
 
@@ -28,6 +29,7 @@ class VelocityObstacleNode
    */
   void initialize(ros::Publisher *cmd_pub,
                   ros::Publisher *mk_pub,
+				  ros::Publisher *os_pub,
                   ros::Subscriber *obstacle_sub,
                   ros::Subscriber *og_sub,
                   ros::Subscriber *asv_sub,
@@ -50,6 +52,7 @@ class VelocityObstacleNode
 
   visualization_msgs::Marker marker_;
   geometry_msgs::Twist cmd_vel_;
+  asv_msgs::Offset os_;
 
 
   VelocityObstacle *vo_;
@@ -65,6 +68,7 @@ class VelocityObstacleNode
   // ROS API
   ros::Publisher *cmd_pub_;
   ros::Publisher *mk_pub_;
+  ros::Publisher *os_pub_;
 
 
   ros::Subscriber *obstacle_sub_;

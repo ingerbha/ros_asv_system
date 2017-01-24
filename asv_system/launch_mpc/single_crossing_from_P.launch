@@ -24,6 +24,6 @@
   <node pkg="rosbag"
         type="record"
         name="rosbag_record"
-        args="-O /home/ingerbha/mnt/ingerbha/Master/ros_records/bagfiles/single_crossing_from_P.bag /asv/state /asv/offset /obstacles/ship1/state"
+        args="-O /home/ingerbha/Master/ros_records/bagfiles/single_crossing_from_P.bag /asv/state /asv/offset /obstacles/ship1/state"
         />
 </launch>

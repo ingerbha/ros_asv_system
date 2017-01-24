@@ -23,10 +23,10 @@ void normalize_angle_diff(double &angle, const double &angle_ref);
 VelocityObstacle::VelocityObstacle() : EDGE_SAMPLES_(10),
                                        VEL_SAMPLES_(41),
                                        ANG_SAMPLES_(101),
-                                       RADIUS_(10.0),
+                                       RADIUS_(30.0), //40
                                        MAX_VEL_(4.0),
                                        MAX_ANG_(2.0944),
-                                       MIN_DIST_(100.0),
+                                       MIN_DIST_(200.0),
                                        D_CPA_MIN_(50.0),
                                        T_CPA_MAX_(60.0)
 {
@@ -471,6 +471,14 @@ void VelocityObstacle::updateAsvState(const nav_msgs::Odometry::ConstPtr &msg, c
 
   u_d_ = u_d;
   psi_d_ = psi_d;
+}
+
+double VelocityObstacle::getUD(){
+	return u_d_;
+}
+
+double VelocityObstacle::getPsiD(){
+	return psi_d_;
 }
 
 void VelocityObstacle::initializeMarker(visualization_msgs::Marker *marker)

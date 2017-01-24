@@ -11,7 +11,7 @@
     <arg name="vessel_model_file" value="$(find asv_simulator)/config/models/ship1.urdf" />
     <arg name="namespace" value="obstacles/ship1" />
     <arg name="shipname" value="ship1" />
-    <arg name="initial_state" value="[0.0, 600.0, -1.57, 1.,0.,0.]" />
+    <arg name="initial_state" value="[0.0, 600.0, -1.75, 1.,0.,0.]" />
   </include>
 
   <include file="$(find asv_obstacle_tracker)/launch/default.launch"/>
@@ -24,6 +24,6 @@
   <node pkg="rosbag"
         type="record"
         name="rosbag_record"
-        args="-O /home/ingerbha/mnt/ingerbha/Master/ros_records/bagfiles/single_head_on.bag /asv/state /asv/offset /obstacles/ship1/state"
+        args="-O /home/ingerbha/Master/ros_records/bagfiles/single_head_on.bag /asv/state /asv/offset /obstacles/ship1/state"
         />
 </launch>

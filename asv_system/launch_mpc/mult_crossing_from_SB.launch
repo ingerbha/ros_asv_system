@@ -1,7 +1,7 @@
 ﻿<launch>
   <include file="$(find asv_simulator)/launch/default.launch">
     <arg name="waypoint_file" value="$(find asv_simulator)/config/mpc_waypoints/south_to_north.yaml" />
-    <arg name="initial_state" value="[0.0,0.0, 1.56, 3.,0.,0.]" />
+    <arg name="initial_state" value="[0.0,-250.0, 1.56, 3.,0.,0.]" />
     <arg name="u_d" value="3.0" />
   </include>
 
@@ -13,7 +13,7 @@
     <arg name="vessel_model_file" value="$(find asv_simulator)/config/models/ship1.urdf" />
     <arg name="namespace" value="obstacles/ship1" />
     <arg name="shipname" value="ship1" />
-    <arg name="initial_state" value="[275.0, 420.0, -3.14, 2.,0.,0.]" />
+    <arg name="initial_state" value="[585.0, 440.0, -3.14, 2.,0.,0.]" />
     <arg name="u_d" value="3.0" />
   </include>
 
@@ -25,8 +25,8 @@
     <arg name="vessel_model_file" value="$(find asv_simulator)/config/models/ship2.urdf" />
     <arg name="namespace" value="obstacles/ship2" />
     <arg name="shipname" value="ship2" />
-    <arg name="initial_state" value="[290.0, 460.0, -3.14, 1.,0.,0.]" />
-    <arg name="u_d" value="2.0" />
+    <arg name="initial_state" value="[600.0, 480.0, -3.14, 1.,0.,0.]" />
+    <arg name="u_d" value="2.8" />
   </include>
   
   
@@ -38,7 +38,7 @@
     <arg name="vessel_model_file" value="$(find asv_simulator)/config/models/ship3.urdf" />
     <arg name="namespace" value="obstacles/ship3" />
     <arg name="shipname" value="ship3" />
-    <arg name="initial_state" value="[290.0,400.0,-3.14, 2.,0.,0.]" />
+    <arg name="initial_state" value="[600.0,420.0,-3.14, 2.,0.,0.]" />
     <arg name="u_d" value="3.0" />
   </include>
   
@@ -57,7 +57,7 @@
   <node pkg="rosbag"
         type="record"
         name="rosbag_record"
-        args="-O /home/ingerbha/mnt/ingerbha/Master/ros_records/bagfiles/mult_crossing_from_SB.bag /asv/state /asv/offset /obstacles/ship1/state /obstacles/ship2/state /obstacles/ship3/state"
+        args="-O /home/ingerbha/Master/ros_records/bagfiles/mult_crossing_from_SB.bag /asv/state /asv/offset /obstacles/ship1/state /obstacles/ship2/state /obstacles/ship3/state"
         />
 
 
